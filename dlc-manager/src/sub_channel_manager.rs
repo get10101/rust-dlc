@@ -757,7 +757,7 @@ where
                 &self.secp,
                 &offered_sub_channel.own_base_points.revocation_basepoint,
                 &state.per_split_point,
-            )?;
+            );
 
         let accept_revoke_params = offered_sub_channel.own_base_points.get_revokable_params(
             &self.secp,
@@ -767,14 +767,13 @@ where
                 .expect("to have counter base points")
                 .revocation_basepoint,
             &next_per_split_point,
-        )?;
+        );
 
         let own_base_secret_key = self
             .wallet
             .get_secret_key_for_pubkey(&offered_sub_channel.own_base_points.own_basepoint)?;
         let own_secret_key =
-            derive_private_key(&self.secp, &next_per_split_point, &own_base_secret_key)
-                .expect("to get a valid secret.");
+            derive_private_key(&self.secp, &next_per_split_point, &own_base_secret_key);
 
         let split_tx = dlc::channel::sub_channel::create_split_tx(
             &offer_revoke_params,
@@ -922,8 +921,7 @@ where
             .get_secret_key_for_pubkey(&signed.own_base_points.publish_basepoint)?;
 
         let publish_sk =
-            derive_private_key(&self.secp, &state.own_per_split_point, &publish_base_secret)
-                .expect("to be able to derive the publish secret");
+            derive_private_key(&self.secp, &state.own_per_split_point, &publish_base_secret);
 
         let counter_split_signature = state.counter_split_adaptor_signature.decrypt(&publish_sk)?;
 
@@ -1009,7 +1007,7 @@ where
                 .expect("to have counter base points")
                 .revocation_basepoint,
             &signed_sub_channel.own_per_split_point,
-        )?;
+        );
 
         let counter_revoke_params = closing
             .counter_base_points
@@ -1019,7 +1017,7 @@ where
                 &self.secp,
                 &closing.own_base_points.revocation_basepoint,
                 &signed_sub_channel.counter_per_split_point,
-            )?;
+            );
 
         let (offer_params, accept_params) = if closing.is_offer {
             (&own_revoke_params, &counter_revoke_params)
@@ -1034,8 +1032,7 @@ where
             &self.secp,
             &signed_sub_channel.own_per_split_point,
             &own_base_secret_key,
-        )
-        .expect("to be able to derive own secret.");
+        );
 
         let own_signature = dlc::util::get_raw_sig_for_tx_input(
             &self.secp,
@@ -1327,7 +1324,7 @@ where
             &self.secp,
             &sub_channel_accept.revocation_basepoint,
             &state.per_split_point,
-        )?;
+        );
 
         let accept_points = PartyBasePoints {
             own_basepoint: sub_channel_accept.own_basepoint,
@@ -1339,7 +1336,7 @@ where
             &self.secp,
             &offered_sub_channel.own_base_points.revocation_basepoint,
             &sub_channel_accept.first_per_split_point,
-        )?;
+        );
 
         let funding_txo = channel_details.funding_txo.expect("to have a funding txo");
         let funding_outpoint = OutPoint {
@@ -1418,8 +1415,7 @@ where
             .wallet
             .get_secret_key_for_pubkey(&offered_sub_channel.own_base_points.own_basepoint)?;
         let own_secret_key =
-            derive_private_key(&self.secp, &state.per_split_point, &own_base_secret_key)
-                .expect("to get a valid secret.");
+            derive_private_key(&self.secp, &state.per_split_point, &own_base_secret_key);
 
         let glue_tx_output_value = ln_output_value
             - dlc::util::weight_to_fee(LN_GLUE_TX_WEIGHT, offered_contract.fee_rate_per_vb);
@@ -1592,7 +1588,7 @@ where
                 .expect("to have counter base points")
                 .revocation_basepoint,
             &state.accept_per_split_point,
-        )?;
+        );
 
         let funding_redeemscript = &accepted_sub_channel.original_funding_redeemscript;
 
@@ -1651,7 +1647,7 @@ where
                 &self.secp,
                 &accepted_sub_channel.own_base_points.revocation_basepoint,
                 &state.offer_per_split_point,
-            )?;
+            );
 
         let sub_channel_info = SubChannelVerifyInfo {
             funding_info: FundingInfo {
@@ -1939,7 +1935,7 @@ where
             &self.secp,
             &state.signed_subchannel.own_per_split_point,
             &per_split_seed,
-        )?;
+        );
 
         let finalize = SubChannelCloseFinalize {
             channel_id: confirm.channel_id,
@@ -2086,7 +2082,7 @@ where
                             .expect("to have counter base points")
                             .revocation_basepoint,
                         &per_update_point,
-                    )?;
+                    );
 
                     let counter_per_update_point =
                         PublicKey::from_secret_key(&self.secp, &counter_per_update_secret);
@@ -2095,7 +2091,7 @@ where
                         .wallet
                         .get_secret_key_for_pubkey(&sub_channel.own_base_points.own_basepoint)?;
 
-                    let own_sk = derive_private_key(&self.secp, &per_update_point, &base_own_sk)?;
+                    let own_sk = derive_private_key(&self.secp, &per_update_point, &base_own_sk);
 
                     let counter_revocation_params = sub_channel
                         .counter_base_points
@@ -2105,7 +2101,7 @@ where
                             &self.secp,
                             &sub_channel.own_base_points.revocation_basepoint,
                             &counter_per_update_point,
-                        )?;
+                        );
 
                     let witness = if sub_channel.own_fund_pk < sub_channel.counter_fund_pk {
                         tx.input[0].witness.to_vec().remove(1)
@@ -2134,7 +2130,7 @@ where
                         &self.secp,
                         &counter_per_update_secret,
                         own_revocation_base_secret,
-                    )?;
+                    );
 
                     let (offer_params, accept_params) = if is_offer {
                         (&own_revocation_params, &counter_revocation_params)

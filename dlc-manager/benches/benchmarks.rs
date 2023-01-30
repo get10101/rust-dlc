@@ -134,7 +134,7 @@ fn create_contract_descriptor() -> ContractDescriptor {
 }
 
 fn get_schnorr_pubkey() -> PublicKey {
-    PublicKey::from_keypair(SECP256K1, &KeyPair::new(SECP256K1, &mut thread_rng()))
+    PublicKey::from_keypair(&KeyPair::new(SECP256K1, &mut thread_rng())).0
 }
 
 fn get_pubkey() -> secp256k1_zkp::PublicKey {

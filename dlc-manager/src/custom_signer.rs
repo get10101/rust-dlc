@@ -208,14 +208,14 @@ impl BaseSign for CustomSigner {
             .sign_channel_announcement(msg, secp_ctx)
     }
 
-    fn ready_channel(
+    fn provide_channel_parameters(
         &mut self,
         channel_parameters: &lightning::ln::chan_utils::ChannelTransactionParameters,
     ) {
         self.in_memory_signer
             .lock()
             .unwrap()
-            .ready_channel(channel_parameters)
+            .provide_channel_parameters(channel_parameters)
     }
 
     fn sign_holder_anchor_input(
@@ -311,10 +311,24 @@ impl KeysInterface for CustomKeysManager {
         self.keys_manager.get_shutdown_scriptpubkey()
     }
 
-    fn get_channel_signer(&self, inbound: bool, channel_value_satoshis: u64) -> Self::Signer {
+    fn generate_channel_keys_id(
+        &self,
+        inbound: bool,
+        channel_value_satoshis: u64,
+        user_channel_id: u128,
+    ) -> [u8; 32] {
+        self.keys_manager
+            .generate_channel_keys_id(inbound, channel_value_satoshis, user_channel_id)
+    }
+
+    fn derive_channel_signer(
+        &self,
+        channel_value_satoshis: u64,
+        channel_keys_id: [u8; 32],
+    ) -> Self::Signer {
         let in_memory = self
             .keys_manager
-            .get_channel_signer(inbound, channel_value_satoshis);
+            .derive_channel_signer(channel_value_satoshis, channel_keys_id);
         CustomSigner::new(in_memory)
     }
 

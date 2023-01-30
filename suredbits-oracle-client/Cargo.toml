@@ -10,7 +10,7 @@ version = "0.1.0"
 bitcoin-test-utils = {path = "../bitcoin-test-utils"}
 dlc-manager = {path = "../dlc-manager"}
 dlc-messages = {path = "../dlc-messages"}
-lightning = {version = "0.0.108", git = "https://github.com/p2pderivatives/rust-lightning/", branch = "split-tx-experiment"}
+lightning = {version = "0.0.108"}
 reqwest = {version = "0.11", features = ["blocking", "json"]}
 secp256k1-zkp = {version = "0.6.0"}
 serde = {version = "*", features = ["derive"]}

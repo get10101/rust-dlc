@@ -304,7 +304,7 @@ impl EventHandler for LnDlcParty {
             Event::PendingHTLCsForwardable { .. } => {
                 self.channel_manager.process_pending_htlc_forwards();
             }
-            Event::PaymentReceived { purpose, .. } => {
+            Event::PaymentClaimable { purpose, .. } => {
                 let payment_preimage = match purpose {
                     PaymentPurpose::InvoicePayment {
                         payment_preimage, ..
@@ -353,7 +353,7 @@ fn create_ln_node(
     let consistent_keys_manager = Arc::new(CustomKeysManager::new(keys_manager));
     let logger = Arc::new(console_logger::ConsoleLogger { name });
 
-    std::fs::create_dir_all(data_dir.clone()).unwrap();
+    std::fs::create_dir_all(data_dir).unwrap();
     let persister = Arc::new(FilesystemPersister::new(data_dir.to_string()));
 
     let mock_blockchain = Arc::new(MockBlockchain::new(blockchain_provider.clone()));

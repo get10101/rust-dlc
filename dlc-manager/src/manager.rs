@@ -802,8 +802,7 @@ where
                 .wallet
                 .get_secret_key_for_pubkey(&signed_sub_channel.own_base_points.own_basepoint)?;
             let own_secret_key =
-                derive_private_key(&self.secp, &state.own_per_split_point, &own_base_secret_key)
-                    .expect("to get a valid secret.");
+                derive_private_key(&self.secp, &state.own_per_split_point, &own_base_secret_key);
             Some(own_secret_key)
         } else {
             None
@@ -896,8 +895,7 @@ where
                 .wallet
                 .get_secret_key_for_pubkey(&signed_sub_channel.own_base_points.own_basepoint)?;
             let own_secret_key =
-                derive_private_key(&self.secp, &state.own_per_split_point, &own_base_secret_key)
-                    .expect("to get a valid secret.");
+                derive_private_key(&self.secp, &state.own_per_split_point, &own_base_secret_key);
             Some(own_secret_key)
         } else {
             None
@@ -1273,8 +1271,7 @@ where
                 .wallet
                 .get_secret_key_for_pubkey(&signed_sub_channel.own_base_points.own_basepoint)?;
             let own_secret_key =
-                derive_private_key(&self.secp, &state.own_per_split_point, &own_base_secret_key)
-                    .expect("to get a valid secret.");
+                derive_private_key(&self.secp, &state.own_per_split_point, &own_base_secret_key);
             let accept_revoke_params = signed_sub_channel
                 .counter_base_points
                 .expect("to have counter base points")
@@ -1282,7 +1279,7 @@ where
                     &self.secp,
                     &signed_sub_channel.own_base_points.revocation_basepoint,
                     &state.counter_per_split_point,
-                )?;
+                );
             (
                 Some(own_secret_key),
                 Some(accept_revoke_params.own_pk.inner),
@@ -1343,7 +1340,7 @@ where
                     &self.secp,
                     &signed_sub_channel.own_base_points.revocation_basepoint,
                     &state.counter_per_split_point,
-                )?;
+                );
             Some(accept_revoke_params.own_pk.inner)
         } else {
             None
@@ -1478,8 +1475,7 @@ where
                 .wallet
                 .get_secret_key_for_pubkey(&signed_sub_channel.own_base_points.own_basepoint)?;
             let own_secret_key =
-                derive_private_key(&self.secp, &state.own_per_split_point, &own_base_secret_key)
-                    .expect("to get a valid secret.");
+                derive_private_key(&self.secp, &state.own_per_split_point, &own_base_secret_key);
             let accept_revoke_params = signed_sub_channel
                 .counter_base_points
                 .expect("to have counter base points")
@@ -1487,7 +1483,7 @@ where
                     &self.secp,
                     &signed_sub_channel.own_base_points.revocation_basepoint,
                     &state.counter_per_split_point,
-                )?;
+                );
             (
                 Some(own_secret_key),
                 Some(accept_revoke_params.own_pk.inner),
@@ -1587,7 +1583,7 @@ where
                     &self.secp,
                     &signed_sub_channel.own_base_points.revocation_basepoint,
                     &state.counter_per_split_point,
-                )?;
+                );
 
             Some(accept_revoke_params.own_pk.inner)
         } else {
@@ -1850,7 +1846,7 @@ where
                         &self.secp,
                         &signed_channel.counter_points.revocation_basepoint,
                         &per_update_point,
-                    )?;
+                    );
 
                     let counter_per_update_point =
                         PublicKey::from_secret_key(&self.secp, &counter_per_update_secret);
@@ -1859,14 +1855,14 @@ where
                         .wallet
                         .get_secret_key_for_pubkey(&signed_channel.own_points.own_basepoint)?;
 
-                    let own_sk = derive_private_key(&self.secp, &per_update_point, &base_own_sk)?;
+                    let own_sk = derive_private_key(&self.secp, &per_update_point, &base_own_sk);
 
                     let counter_revocation_params =
                         signed_channel.counter_points.get_revokable_params(
                             &self.secp,
                             &signed_channel.own_points.revocation_basepoint,
                             &counter_per_update_point,
-                        )?;
+                        );
 
                     let witness = if signed_channel.own_params.fund_pubkey
                         < signed_channel.counter_params.fund_pubkey
@@ -1897,7 +1893,7 @@ where
                         &self.secp,
                         &counter_per_update_secret,
                         own_revocation_base_secret,
-                    )?;
+                    );
 
                     let (offer_params, accept_params) = if is_offer {
                         (&own_revocation_params, &counter_revocation_params)
