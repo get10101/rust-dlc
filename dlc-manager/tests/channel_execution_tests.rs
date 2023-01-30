@@ -315,13 +315,11 @@ fn channel_execution_test(test_params: TestParams, path: TestPath) {
     let path_copy = path.clone();
     let alter_sign = move |msg| match msg {
         Message::SignChannel(mut sign_channel) => {
-            match path_copy {
-                TestPath::BadSignBufferAdaptorSignature => {
-                    sign_channel.buffer_adaptor_signature =
-                        alter_adaptor_sig(&sign_channel.buffer_adaptor_signature);
-                }
-                _ => {}
+            if path_copy == TestPath::BadSignBufferAdaptorSignature {
+                sign_channel.buffer_adaptor_signature =
+                    alter_adaptor_sig(&sign_channel.buffer_adaptor_signature);
             }
+
             Some(Message::SignChannel(sign_channel))
         }
         _ => msg_filter_copy(msg),
@@ -464,7 +462,7 @@ fn channel_execution_test(test_params: TestParams, path: TestPath) {
                         first_send,
                         second,
                         channel_id,
-                        &second_receive,
+                        second_receive,
                         sink_rpc,
                         sink_address,
                     );

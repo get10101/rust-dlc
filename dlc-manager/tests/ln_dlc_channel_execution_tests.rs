@@ -89,6 +89,8 @@ type DlcChannelManager = Manager<
     Arc<MockTime>,
     Arc<ElectrsBlockchainProvider>,
 >;
+
+#[allow(clippy::type_complexity)]
 struct LnDlcParty {
     peer_manager: Arc<PeerManager>,
     channel_manager: Arc<ChannelManager>,

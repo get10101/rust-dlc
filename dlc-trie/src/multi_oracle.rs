@@ -406,12 +406,17 @@ mod tests {
     };
     use secp256k1_zkp::rand::{thread_rng, RngCore};
 
+    struct CetCover {
+        min: Vec<(Vec<usize>, Vec<usize>)>,
+        max: Vec<(Vec<usize>, Vec<usize>)>,
+    }
+
     fn compute_covering_cets_min_and_max(
         oracle_digits_infos: &[usize],
         main_outcome_prefix: &[usize],
         max_error_exp: usize,
         min_support_exp: usize,
-    ) -> (Vec<(Vec<usize>, Vec<usize>)>, Vec<(Vec<usize>, Vec<usize>)>) {
+    ) -> CetCover {
         let covering_max = compute_outcome_combinations(
             oracle_digits_infos,
             main_outcome_prefix,
@@ -430,16 +435,16 @@ mod tests {
         assert!(covering_max.iter().all(|x| x.len() == 2));
         assert!(covering_min.iter().all(|x| x.len() == 2));
 
-        (
-            covering_max
+        CetCover {
+            min: covering_min
                 .into_iter()
                 .map(|mut x| (x.remove(0), x.remove(x.len() - 1)))
                 .collect(),
-            covering_min
+            max: covering_max
                 .into_iter()
                 .map(|mut x| (x.remove(0), x.remove(x.len() - 1)))
                 .collect(),
-        )
+        }
     }
 
     struct TestCase {
@@ -568,7 +573,7 @@ mod tests {
     #[test]
     fn compute_outcome_combination_tests() {
         for case in test_cases() {
-            let (max, min) = compute_covering_cets_min_and_max(
+            let CetCover { min, max } = compute_covering_cets_min_and_max(
                 &same_num_digits_oracle_numeric_infos(2, case.nb_digits, 2).nb_digits,
                 &case.main_outcome_prefix,
                 case.max_error_exp,
@@ -620,7 +625,10 @@ mod tests {
         let min_support = 1 << min_support_exp;
         let max_val = (1 << nb_digits) - 1;
 
-        let (cover_max, cover_min) = compute_covering_cets_min_and_max(
+        let CetCover {
+            min: cover_min,
+            max: cover_max,
+        } = compute_covering_cets_min_and_max(
             &same_num_digits_oracle_numeric_infos(2, nb_digits, 2).nb_digits,
             &main_outcome_prefix,
             max_error_exp,
@@ -825,7 +833,7 @@ mod tests {
     #[test]
     fn variable_nb_digit_tests() {
         for case in variable_len_test_cases() {
-            let (max, min) = compute_covering_cets_min_and_max(
+            let CetCover { min, max } = compute_covering_cets_min_and_max(
                 &get_variable_oracle_numeric_infos(&case.nb_digits, 2).nb_digits,
                 &case.main_outcome_prefix,
                 case.max_error_exp,

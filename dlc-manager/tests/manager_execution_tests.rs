@@ -542,11 +542,10 @@ fn manager_execution_test(test_params: TestParams, path: TestPath) {
         _ => Some(msg),
     };
 
-    let msg_callback = |msg: &Message| match msg {
-        Message::Sign(s) => {
+    let msg_callback = |msg: &Message| {
+        if let Message::Sign(s) = msg {
             write_message("sign_message", s.clone());
         }
-        _ => {}
     };
 
     let alice_handle = receive_loop!(

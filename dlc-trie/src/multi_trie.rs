@@ -164,7 +164,7 @@ impl<'a, T> Iterator for MultiTrieIterator<'a, T> {
     }
 }
 
-/// Struct used to store DLC outcome information for multi oracle cases.  
+/// Struct used to store DLC outcome information for multi oracle cases.
 #[derive(Clone)]
 pub struct MultiTrie<T> {
     store: Vec<MultiTrieNode<T>>,
@@ -570,6 +570,7 @@ mod tests {
         get_variable_oracle_numeric_infos, same_num_digits_oracle_numeric_infos,
     };
 
+    #[allow(clippy::type_complexity)]
     fn tests_common(
         m_trie: &mut MultiTrie<usize>,
         path: Vec<usize>,
@@ -1031,10 +1032,8 @@ mod tests {
 
         unordered.sort();
 
-        let mut prev_index = 0;
-        for i in unordered.iter().skip(1) {
+        for (prev_index, i) in unordered.iter().skip(1).enumerate() {
             assert_eq!(*i, prev_index + 1);
-            prev_index += 1;
         }
     }
 }

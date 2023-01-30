@@ -1,4 +1,5 @@
 use bitcoin::hashes::Hash;
+use bitcoin::util::key::XOnlyPublicKey;
 use bitcoin::OutPoint;
 use bitcoin::Script;
 use bitcoin::WPubkeyHash;
@@ -22,12 +23,7 @@ use dlc_messages::oracle_msgs::DigitDecompositionEventDescriptor;
 use dlc_messages::oracle_msgs::EventDescriptor;
 use dlc_messages::oracle_msgs::OracleAnnouncement;
 use dlc_messages::oracle_msgs::OracleEvent;
-use secp256k1_zkp::{
-    global::SECP256K1,
-    rand::thread_rng,
-    schnorrsig::{KeyPair, PublicKey, Signature},
-    SecretKey,
-};
+use secp256k1_zkp::{global::SECP256K1, rand::thread_rng, schnorr::Signature, KeyPair, SecretKey};
 use std::str::FromStr;
 
 /// The base in which the outcome values are decomposed.
@@ -133,8 +129,8 @@ fn create_contract_descriptor() -> ContractDescriptor {
     })
 }
 
-fn get_schnorr_pubkey() -> PublicKey {
-    PublicKey::from_keypair(&KeyPair::new(SECP256K1, &mut thread_rng())).0
+fn get_schnorr_pubkey() -> XOnlyPublicKey {
+    XOnlyPublicKey::from_keypair(&KeyPair::new(SECP256K1, &mut thread_rng())).0
 }
 
 fn get_pubkey() -> secp256k1_zkp::PublicKey {
@@ -142,7 +138,7 @@ fn get_pubkey() -> secp256k1_zkp::PublicKey {
 }
 
 fn get_p2wpkh_script_pubkey() -> Script {
-    Script::new_v0_wpkh(&WPubkeyHash::hash(&get_pubkey().serialize()))
+    Script::new_v0_p2wpkh(&WPubkeyHash::hash(&get_pubkey().serialize()))
 }
 
 fn create_oracle_announcements() -> Vec<OracleAnnouncement> {

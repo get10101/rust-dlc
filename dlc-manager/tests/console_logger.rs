@@ -15,7 +15,7 @@ impl Logger for ConsoleLogger {
             // deanonymization attacks. For testing, however, its quite useful.
             self.name,
             Utc::now().format("%Y-%m-%d %H:%M:%S%.3f"),
-            record.level.to_string(),
+            record.level,
             record.module_path,
             record.line,
             raw_log
