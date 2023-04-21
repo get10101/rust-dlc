@@ -1928,11 +1928,13 @@ where
             .dlc_channel_manager
             .get_closed_sub_dlc_channel(dlc_channel_id, state.own_balance)?;
 
+        dbg!(sub_channel.update_idx, "confirm");
+
         sub_channel
             .counter_party_secrets
             .provide_secret(
                 sub_channel.update_idx,
-                *confirm.split_revocation_secret.as_ref(),
+                *dbg!(confirm.split_revocation_secret.as_ref()),
             )
             .map_err(|_| Error::InvalidParameters("Invalid split revocation secret".to_string()))?;
 
@@ -2025,11 +2027,13 @@ where
             Some(*counter_party)
         )?;
 
+        dbg!(sub_channel.update_idx, "finalize");
+
         sub_channel
             .counter_party_secrets
             .provide_secret(
                 sub_channel.update_idx,
-                *finalize.split_revocation_secret.as_ref(),
+                *dbg!(finalize.split_revocation_secret.as_ref()),
             )
             .map_err(|_| Error::InvalidParameters("Invalid split revocation secret".to_string()))?;
 
