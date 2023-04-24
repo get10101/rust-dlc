@@ -644,10 +644,10 @@ where
             accept_split_adaptor_signature: split_tx_adaptor_signature,
             split_tx,
             ln_glue_transaction: ln_glue_tx,
-            ln_rollback: LnRollBackInfo {
+            ln_rollback: Some(LnRollBackInfo {
                 channel_value_satoshis: channel_details.channel_value_satoshis,
                 value_to_self_msat: channel_details.value_to_self_msat,
-            },
+            }),
         };
 
         offered_sub_channel.state = SubChannelState::Accepted(accepted_sub_channel);
@@ -1489,7 +1489,7 @@ where
             split_tx,
             counter_glue_signature: sub_channel_accept.ln_glue_signature,
             ln_glue_transaction: ln_glue_tx,
-            ln_rollback,
+            ln_rollback: Some(ln_rollback),
         };
 
         offered_sub_channel.counter_base_points = Some(accept_points);
@@ -2470,8 +2470,14 @@ where
                 SubChannelState::Accepted(a) => {
                     self.ln_channel_manager.reset_fund_outpoint(
                         &channel.channel_id,
-                        a.ln_rollback.channel_value_satoshis,
-                        a.ln_rollback.value_to_self_msat,
+                        a.ln_rollback
+                            .as_ref()
+                            .ok_or(Error::InvalidState("Missing LN rollback info".into()))?
+                            .channel_value_satoshis,
+                        a.ln_rollback
+                            .as_ref()
+                            .ok_or(Error::InvalidState("Missing LN rollback info".into()))?
+                            .value_to_self_msat,
                     )?;
                     let dlc_channel_id = channel.get_dlc_channel_id(0).ok_or_else(|| {
                         Error::InvalidState("Could not get dlc channel id".to_string())
@@ -2526,8 +2532,14 @@ where
                         if counter_state == ReestablishFlag::Accepted as u8 {
                             self.ln_channel_manager.reset_fund_outpoint(
                                 &channel.channel_id,
-                                a.ln_rollback.channel_value_satoshis,
-                                a.ln_rollback.value_to_self_msat,
+                                a.ln_rollback
+                                    .as_ref()
+                                    .ok_or(Error::InvalidState("Missing LN rollback info".into()))?
+                                    .channel_value_satoshis,
+                                a.ln_rollback
+                                    .as_ref()
+                                    .ok_or(Error::InvalidState("Missing LN rollback info".into()))?
+                                    .value_to_self_msat,
                             )?;
                             let dlc_channel_id =
                                 channel.get_dlc_channel_id(0).ok_or_else(|| {

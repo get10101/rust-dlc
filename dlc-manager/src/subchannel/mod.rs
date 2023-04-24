@@ -173,7 +173,7 @@ pub struct AcceptedSubChannel {
     /// Glue transaction that bridges the split transaction to the Lightning sub channel.
     pub ln_glue_transaction: Transaction,
     /// Information used to facilitate the rollback of a channel split.
-    pub ln_rollback: LnRollBackInfo,
+    pub ln_rollback: Option<LnRollBackInfo>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -213,7 +213,7 @@ pub struct SignedSubChannel {
     /// Signature of the remote party for the glue transaction.
     pub counter_glue_signature: Signature,
     /// Information used to facilitate the rollback of a channel split.
-    pub ln_rollback: LnRollBackInfo,
+    pub ln_rollback: Option<LnRollBackInfo>,
 }
 
 impl SignedSubChannel {
