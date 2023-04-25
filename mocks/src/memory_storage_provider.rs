@@ -225,6 +225,10 @@ impl Storage for MemoryStorage {
         Ok(())
     }
 
+    fn delete_subchannel(&self, _channel_id: &dlc_manager::ChannelId) -> Result<(), DaemonError> {
+        unimplemented!()
+    }
+
     fn get_channel(&self, channel_id: &ChannelId) -> Result<Option<Channel>, DaemonError> {
         let map = self.channels.read().expect("could not get read lock");
         Ok(map.get(channel_id).cloned())
