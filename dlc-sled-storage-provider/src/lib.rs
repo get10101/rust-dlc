@@ -373,6 +373,16 @@ impl Storage for SledStorageProvider {
         Ok(())
     }
 
+    fn delete_subchannel(&self, channel_id: &dlc_manager::ChannelId) -> Result<(), Error> {
+        self.sub_channel_tree()?
+            .remove(channel_id)
+            .map_err(to_storage_error)?;
+
+        self.sub_channel_tree()?.flush().map_err(to_storage_error)?;
+
+        Ok(())
+    }
+
     fn get_channel(&self, channel_id: &dlc_manager::ChannelId) -> Result<Option<Channel>, Error> {
         match self
             .channel_tree()?

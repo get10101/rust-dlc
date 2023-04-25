@@ -156,6 +156,8 @@ pub trait Storage {
     fn upsert_channel(&self, channel: Channel, contract: Option<Contract>) -> Result<(), Error>;
     /// Delete the channel with given [`ChannelId`] if any.
     fn delete_channel(&self, channel_id: &ChannelId) -> Result<(), Error>;
+    /// Delete the subchannel with given [`ChannelId`] if any.
+    fn delete_subchannel(&self, channel_id: &ChannelId) -> Result<(), Error>;
     /// Returns the channel with given [`ChannelId`] if any.
     fn get_channel(&self, channel_id: &ChannelId) -> Result<Option<Channel>, Error>;
     /// Returns the set of [`SignedChannel`] in the store. Returns only the one
