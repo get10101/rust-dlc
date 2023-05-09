@@ -1046,6 +1046,8 @@ fn ln_dlc_test(test_path: TestPath) {
         return;
     }
 
+    let commit_tx = get_commit_tx_from_node(&alice_node).remove(0);
+
     alice_node
         .sub_channel_manager
         .initiate_force_close_sub_channel(&channel_id)
@@ -1065,6 +1067,13 @@ fn ln_dlc_test(test_path: TestPath) {
         .unwrap();
 
     generate_blocks(1);
+
+    assert_eq!(
+        1,
+        electrs
+            .get_transaction_confirmations(&commit_tx.txid())
+            .unwrap()
+    );
 
     bob_node.update_to_chain_tip();
 
