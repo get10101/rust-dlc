@@ -361,6 +361,13 @@ where
                     self.dlc_channel_manager.get_secp(),
                     self.dlc_channel_manager.get_wallet(),
                 )?;
+
+                let counter_fund_pk = channel_details.counter_funding_pubkey.ok_or_else(|| {
+                    Error::InvalidParameters(format!(
+                        "LN channel without counter_funding_pubkey {channel_id:02x?}"
+                    ))
+                })?;
+
                 SubChannel {
                     channel_id: channel_details.channel_id,
                     counter_party: channel_details.counterparty.node_id,
@@ -375,7 +382,7 @@ where
                     fund_value_satoshis: channel_details.channel_value_satoshis,
                     original_funding_redeemscript: channel_details.funding_redeemscript.unwrap(),
                     own_fund_pk: channel_details.holder_funding_pubkey,
-                    counter_fund_pk: channel_details.counter_funding_pubkey,
+                    counter_fund_pk,
                 }
             }
         };
@@ -697,6 +704,11 @@ where
             .ln_channel_manager
             .get_channel_details(channel_id)
             .unwrap();
+        let counter_fund_pk = channel_details.counter_funding_pubkey.ok_or_else(|| {
+            Error::InvalidParameters(format!(
+                "LN channel without counter_funding_pubkey {channel_id:02x?}"
+            ))
+        })?;
 
         let publish_base_secret = self
             .dlc_channel_manager
@@ -732,7 +744,7 @@ where
                     self.dlc_channel_manager.get_secp(),
                     &mut split_tx,
                     &counter_split_signature,
-                    &channel_details.counter_funding_pubkey,
+                    &counter_fund_pk,
                     fund_sk,
                     &signed.original_funding_redeemscript,
                     signed.fund_value_satoshis,
@@ -1213,6 +1225,12 @@ where
                     sub_channel_offer.channel_id
                 ))
             })?;
+        let counter_fund_pk = channel_details.counter_funding_pubkey.ok_or_else(|| {
+            Error::InvalidParameters(format!(
+                "LN channel without counter_funding_pubkey {:02x?}",
+                sub_channel_offer.channel_id
+            ))
+        })?;
 
         let sub_channel =
             match self
@@ -1275,7 +1293,7 @@ where
                 fund_value_satoshis: channel_details.channel_value_satoshis,
                 original_funding_redeemscript: channel_details.funding_redeemscript.unwrap(),
                 own_fund_pk: channel_details.holder_funding_pubkey,
-                counter_fund_pk: channel_details.counter_funding_pubkey,
+                counter_fund_pk,
             },
         };
 
@@ -1346,6 +1364,12 @@ where
                     sub_channel_accept.channel_id
                 ))
             })?;
+        let counter_fund_pk = channel_details.counter_funding_pubkey.ok_or_else(|| {
+            Error::InvalidParameters(format!(
+                "LN channel without counter_funding_pubkey {:02x?}",
+                sub_channel_accept.channel_id
+            ))
+        })?;
 
         let ln_rollback = (&channel_details).into();
         let offer_revoke_params = offered_sub_channel.own_base_points.get_revokable_params(
@@ -1422,7 +1446,7 @@ where
             &split_tx.transaction,
             channel_details.channel_value_satoshis,
             &funding_redeemscript,
-            &channel_details.counter_funding_pubkey,
+            &counter_fund_pk,
             &offer_revoke_params.publish_pk.inner,
             &sub_channel_accept.split_adaptor_signature,
         )?;
@@ -1636,6 +1660,12 @@ where
                     sub_channel_confirm.channel_id
                 ))
             })?;
+        let counter_fund_pk = channel_details.counter_funding_pubkey.ok_or_else(|| {
+            Error::InvalidParameters(format!(
+                "LN channel without counter_funding_pubkey {:02x?}",
+                sub_channel_confirm.channel_id
+            ))
+        })?;
 
         let accept_revoke_params = accepted_sub_channel.own_base_points.get_revokable_params(
             self.dlc_channel_manager.get_secp(),
@@ -1654,7 +1684,7 @@ where
             &state.split_tx.transaction,
             accepted_sub_channel.fund_value_satoshis,
             funding_redeemscript,
-            &channel_details.counter_funding_pubkey,
+            &counter_fund_pk,
             &accept_revoke_params.publish_pk.inner,
             &sub_channel_confirm.split_adaptor_signature,
         )?;
