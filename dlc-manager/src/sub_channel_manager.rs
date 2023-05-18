@@ -875,11 +875,11 @@ where
             "Could not get dlc channel id.".to_string(),
         ))?;
 
-        self.dlc_channel_manager
-            .force_close_sub_channel(&dlc_channel_id, (closing.clone(), &state))?;
-
         self.ln_channel_manager
             .force_close_channel(channel_id, &counter_party)?;
+
+        self.dlc_channel_manager
+            .force_close_sub_channel(&dlc_channel_id, (closing.clone(), &state))?;
 
         closing.state = SubChannelState::OnChainClosed;
 
