@@ -438,7 +438,15 @@ impl Storage for SledStorageProvider {
             .get(channel_id)
             .map_err(to_storage_error)?
         {
-            Some(res) => Ok(Some(deserialize_channel(&res)?)),
+            Some(res) => {
+                match deserialize_channel(&res) {
+                    Ok(channel) => Ok(Some(channel)),
+                    Err(e) => {
+                        eprintln!("WARN: Error when deserializing channel, skipping: {e:#}");
+                        Ok(None)
+                    }
+                }
+            },
             None => Ok(None),
         }
     }
@@ -510,17 +518,43 @@ impl Storage for SledStorageProvider {
             .get(channel_id)
             .map_err(to_storage_error)?
         {
-            Some(res) => Ok(Some(deserialize_sub_channel(&res)?)),
+            Some(res) => {
+                match  deserialize_sub_channel(&res) {
+                    Ok(sub_channel) => Ok(Some(sub_channel)),
+                    Err(e) => {
+                        eprintln!("WARN: Error when deserializing subchannel, skipping: {e:#}");
+                        Ok(None)
+                    }
+                }
+            },
             None => Ok(None),
         }
     }
 
     fn get_sub_channels(&self) -> Result<Vec<SubChannel>, Error> {
-        self.sub_channel_tree()?
-            .iter()
-            .values()
-            .map(|x| deserialize_sub_channel(&x.unwrap()))
-            .collect::<Result<Vec<SubChannel>, Error>>()
+        let mut sub_channels = Vec::new();
+
+        for sub_channel in self.sub_channel_tree()?.iter().values() {
+            let sub_channel = match sub_channel {
+                Ok(sub_channel) => sub_channel,
+                Err(e) => {
+                    eprintln!("WARN: Error when loading subchannel, skipping: {e:#}");
+                    continue;
+                }
+            };
+
+            let sub_channel = match deserialize_sub_channel(&sub_channel) {
+                Ok(sub_channel) => sub_channel,
+                Err(e) => {
+                    eprintln!("WARN: Error when deserializing subchannel, skipping: {e:#}");
+                    continue;
+                }
+            };
+
+            sub_channels.push(sub_channel);
+        }
+
+        Ok(sub_channels)
     }
 
     fn get_offered_sub_channels(&self) -> Result<Vec<SubChannel>, Error> {
