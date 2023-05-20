@@ -190,23 +190,43 @@ impl SledStorageProvider {
         prefix: &[u8],
         consume: Option<u64>,
     ) -> Result<Vec<T>, Error> {
-        let iter = tree.iter();
-        iter.values()
-            .filter_map(|res| {
-                let value = res.unwrap();
-                let mut cursor = Cursor::new(&value);
-                let mut pref = vec![0u8; prefix.len()];
-                cursor.read_exact(&mut pref).expect("Error reading prefix");
-                if pref == prefix {
-                    if let Some(c) = consume {
-                        cursor.set_position(cursor.position() + c);
-                    }
-                    Some(Ok(T::deserialize(&mut cursor).ok()?))
-                } else {
-                    None
+        let mut values = Vec::new();
+
+        for res in tree.iter().values() {
+
+            let value = match res {
+                Ok(value) => value,
+                Err(e) => {
+                    eprintln!("WARN: Error when loading contract, skipping: {e:#}");
+                    continue;
                 }
-            })
-            .collect()
+            };
+
+            let mut cursor = Cursor::new(&value);
+            let mut pref = vec![0u8; prefix.len()];
+
+            cursor.read_exact(&mut pref).expect("Error reading prefix");
+
+            if pref == prefix {
+                if let Some(c) = consume {
+                    cursor.set_position(cursor.position() + c);
+                }
+
+                let value = match T::deserialize(&mut cursor) {
+                    Ok(contract) => contract,
+                    Err(e) => {
+                        eprintln!("WARN: Error when deserializing data with prefix {prefix:?}, skipping: {e:#}");
+                        continue;
+                    }
+                };
+
+                values.push(value)
+
+            }
+
+        }
+
+        Ok(values)
     }
 
     fn open_tree(&self, tree_id: &[u8; 1]) -> Result<Tree, Error> {
@@ -250,17 +270,46 @@ impl Storage for SledStorageProvider {
             .get(contract_id)
             .map_err(to_storage_error)?
         {
-            Some(res) => Ok(Some(deserialize_contract(&res)?)),
+            Some(res) => {
+                let contract = match deserialize_contract(&res) {
+                    Ok(contract) => contract,
+                    Err(e) => {
+                        eprintln!("WARN: Error when deserializing contract, skipping: {e:#}");
+                        return Ok(None);
+                    }
+                };
+
+                Ok(Some(contract))
+            },
             None => Ok(None),
         }
     }
 
     fn get_contracts(&self) -> Result<Vec<Contract>, Error> {
-        self.contract_tree()?
-            .iter()
-            .values()
-            .map(|x| deserialize_contract(&x.unwrap()))
-            .collect::<Result<Vec<Contract>, Error>>()
+
+        let mut contracts = Vec::new();
+
+        for contract in self.contract_tree()?.iter().values() {
+            let contract = match contract {
+                Ok(contract) => contract,
+                Err(e) => {
+                    eprintln!("WARN: Error when loading contract, skipping: {e:#}");
+                    continue;
+                }
+            };
+
+            let contract = match deserialize_contract(&contract) {
+                Ok(contract) => contract,
+                Err(e) => {
+                    eprintln!("WARN: Error when deserializing contract, skipping: {e:#}");
+                    continue;
+                }
+            };
+
+            contracts.push(contract);
+        }
+
+        Ok(contracts)
     }
 
     fn create_contract(&self, contract: &OfferedContract) -> Result<(), Error> {
