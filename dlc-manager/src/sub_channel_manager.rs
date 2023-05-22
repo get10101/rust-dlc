@@ -379,7 +379,9 @@ where
                     fund_value_satoshis: channel_details.channel_value_satoshis,
                     original_funding_redeemscript: channel_details.funding_redeemscript.unwrap(),
                     own_fund_pk: channel_details.holder_funding_pubkey,
-                    counter_fund_pk: channel_details.counter_funding_pubkey,
+                    counter_fund_pk: channel_details.counter_funding_pubkey.ok_or_else(|| {
+                        Error::InvalidState(format!("Counter funding PK is missing"))
+                    })?,
                 }
             }
         };
@@ -741,6 +743,10 @@ where
 
                 let mut own_sig = None;
 
+                let counter_funding_pubkey = channel_details
+                    .counter_funding_pubkey
+                    .ok_or_else(|| Error::InvalidState(format!("Counter funding PK is missing")))?;
+
                 self.ln_channel_manager
                     .sign_with_fund_key_cb(channel_lock, &mut |fund_sk| {
                         own_sig = Some(
@@ -758,7 +764,7 @@ where
                             self.dlc_channel_manager.get_secp(),
                             &mut split_tx,
                             &counter_split_signature,
-                            &channel_details.counter_funding_pubkey,
+                            &counter_funding_pubkey,
                             fund_sk,
                             &signed.original_funding_redeemscript,
                             signed.fund_value_satoshis,
@@ -1301,7 +1307,9 @@ where
                 fund_value_satoshis: channel_details.channel_value_satoshis,
                 original_funding_redeemscript: channel_details.funding_redeemscript.unwrap(),
                 own_fund_pk: channel_details.holder_funding_pubkey,
-                counter_fund_pk: channel_details.counter_funding_pubkey,
+                counter_fund_pk: channel_details
+                    .counter_funding_pubkey
+                    .ok_or_else(|| Error::InvalidState(format!("Counter funding PK is missing")))?,
             },
         };
 
@@ -1448,7 +1456,9 @@ where
             &split_tx.transaction,
             channel_details.channel_value_satoshis,
             &funding_redeemscript,
-            &channel_details.counter_funding_pubkey,
+            &channel_details
+                .counter_funding_pubkey
+                .ok_or_else(|| Error::InvalidState(format!("Counter funding PK is missing")))?,
             &offer_revoke_params.publish_pk.inner,
             &sub_channel_accept.split_adaptor_signature,
         )?;
@@ -1693,7 +1703,9 @@ where
                     &state.split_tx.transaction,
                     accepted_sub_channel.fund_value_satoshis,
                     funding_redeemscript,
-                    &channel_details.counter_funding_pubkey,
+                    &channel_details.counter_funding_pubkey.ok_or_else(|| {
+                        Error::InvalidState(format!("Counter funding PK is missing"))
+                    })?,
                     &accept_revoke_params.publish_pk.inner,
                     &sub_channel_confirm.split_adaptor_signature,
                 )
