@@ -3,6 +3,7 @@
 
 use std::collections::HashMap;
 
+use autometrics::autometrics;
 use bitcoin::{Block, BlockHash, Transaction, Txid};
 use dlc_messages::ser_impls::{
     read_ecdsa_adaptor_signature, read_hash_map, read_vec, write_ecdsa_adaptor_signature,
@@ -91,6 +92,7 @@ impl ChainMonitor {
         self.watched_tx.remove(txid);
     }
 
+    #[autometrics]
     pub(crate) fn cleanup_channel(&mut self, channel_id: ChannelId) {
         let to_remove = self
             .watched_tx
@@ -108,6 +110,7 @@ impl ChainMonitor {
         }
     }
 
+    #[autometrics]
     pub(crate) fn process_block(
         &self,
         block: &Block,
@@ -138,6 +141,7 @@ impl ChainMonitor {
     /// To be safe this is a separate function from process block to make sure updates are
     /// saved before we update the state. It is better to re-process a block than not
     /// process it at all.
+    #[autometrics]
     pub(crate) fn increment_height(&mut self, last_block_hash: &BlockHash) {
         self.last_height += 1;
         self.last_block_hashes.push(*last_block_hash);

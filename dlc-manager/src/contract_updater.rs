@@ -2,6 +2,7 @@
 
 use std::ops::Deref;
 
+use autometrics::autometrics;
 use bitcoin::{consensus::Decodable, Script, Transaction, Witness};
 use dlc::{DlcTransactions, PartyParams};
 use dlc_messages::{
@@ -25,6 +26,7 @@ use crate::{
 
 /// Creates an [`OfferedContract`] and [`OfferDlc`] message from the provided
 /// contract and oracle information.
+#[autometrics]
 pub fn offer_contract<C: Signing, W: Deref, B: Deref, T: Deref>(
     secp: &Secp256k1<C>,
     contract_input: &ContractInput,
@@ -69,6 +71,7 @@ where
 
 /// Creates an [`AcceptedContract`] and produces
 /// the accepting party's cet adaptor signatures.
+#[autometrics]
 pub fn accept_contract<W: Deref, B: Deref>(
     secp: &Secp256k1<All>,
     offered_contract: &OfferedContract,
@@ -218,6 +221,7 @@ pub(crate) fn accept_contract_internal(
 
 /// Verifies the information of the accepting party [`Accept` message](dlc_messages::AcceptDlc),
 /// creates a [`SignedContract`], and generates the offering party CET adaptor signatures.
+#[autometrics]
 pub fn verify_accepted_and_sign_contract<S: Deref>(
     secp: &Secp256k1<All>,
     offered_contract: &OfferedContract,
@@ -490,6 +494,7 @@ where
 /// Verifies the information from the offer party [`Sign` message](dlc_messages::SignDlc),
 /// creates the accepting party's [`SignedContract`] and returns it along with the
 /// signed fund transaction.
+#[autometrics]
 pub fn verify_signed_contract<S: Deref>(
     secp: &Secp256k1<All>,
     accepted_contract: &AcceptedContract,
@@ -639,6 +644,8 @@ where
 }
 
 /// Signs and return the CET that can be used to close the given contract.
+
+#[autometrics]
 pub fn get_signed_cet<C: Signing, S: Deref>(
     secp: &Secp256k1<C>,
     contract: &SignedContract,
@@ -697,6 +704,7 @@ where
 }
 
 /// Signs and return the refund transaction to refund the contract.
+#[autometrics]
 pub fn get_signed_refund<C: Signing, S: Deref>(
     secp: &Secp256k1<C>,
     contract: &SignedContract,

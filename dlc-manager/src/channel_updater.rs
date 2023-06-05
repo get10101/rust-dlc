@@ -23,6 +23,7 @@ use crate::{
     subchannel::{ClosingSubChannel, SubChannel},
     Blockchain, ChannelId, ContractId, Signer, Time, Wallet,
 };
+use autometrics::autometrics;
 use bitcoin::{OutPoint, Script, Sequence, Transaction};
 use dlc::{
     channel::{get_tx_adaptor_signature, verify_tx_adaptor_signature, DlcChannelTransactions},
@@ -95,6 +96,7 @@ pub(crate) struct SubChannelVerifyInfo {
 
 /// Creates an [`OfferedChannel`] and an associated [`OfferedContract`] using
 /// the given parameter.
+#[autometrics]
 pub fn offer_channel<C: Signing, W: Deref, B: Deref, T: Deref>(
     secp: &Secp256k1<C>,
     contract: &ContractInput,
@@ -167,6 +169,7 @@ where
 /// Move the given [`OfferedChannel`] and [`OfferedContract`] to an [`AcceptedChannel`]
 /// and [`AcceptedContract`], returning them as well as the [`AcceptChannel`]
 /// message to be sent to the counter party.
+#[autometrics]
 pub fn accept_channel_offer<W: Deref, B: Deref>(
     secp: &Secp256k1<All>,
     offered_channel: &OfferedChannel,
@@ -189,6 +192,7 @@ where
     )
 }
 
+#[autometrics]
 pub(crate) fn accept_channel_offer_internal<W: Deref, B: Deref>(
     secp: &Secp256k1<All>,
     offered_channel: &OfferedChannel,
@@ -372,6 +376,7 @@ where
 /// to the given [`OfferedChannel`] and [`OfferedContract`], transforming them
 /// to a [`SignedChannel`] and [`SignedContract`], returning them as well as the
 /// [`SignChannel`] to be sent to the counter party.
+#[autometrics]
 pub fn verify_and_sign_accepted_channel<S: Deref>(
     secp: &Secp256k1<All>,
     offered_channel: &OfferedChannel,
@@ -396,6 +401,7 @@ where
     )
 }
 
+#[autometrics]
 pub(crate) fn verify_and_sign_accepted_channel_internal<S: Deref>(
     secp: &Secp256k1<All>,
     offered_channel: &OfferedChannel,
@@ -637,6 +643,7 @@ where
 /// Verify that the given [`SignChannel`] message is valid with respect to the
 /// given [`AcceptedChannel`] and [`AcceptedContract`], transforming them
 /// to a [`SignedChannel`] and [`SignedContract`], and returning them.
+#[autometrics]
 pub fn verify_signed_channel<S: Deref>(
     secp: &Secp256k1<All>,
     accepted_channel: &AcceptedChannel,
@@ -659,6 +666,7 @@ where
     )
 }
 
+#[autometrics]
 pub(crate) fn verify_signed_channel_internal<S: Deref>(
     secp: &Secp256k1<All>,
     accepted_channel: &AcceptedChannel,
@@ -789,6 +797,7 @@ where
 /// Creates a [`SettleOffer`] message from the given [`SignedChannel`] and parameters,
 /// updating the state of the channel at the same time.  Expects the
 /// channel to be in [`SignedChannelState::Established`] state.
+#[autometrics]
 pub fn settle_channel_offer<C: Signing, S: Deref, T: Deref>(
     secp: &Secp256k1<C>,
     channel: &mut SignedChannel,
@@ -840,6 +849,7 @@ where
 
 /// Updates the state of the given [`SignedChannel`] using the given [`SettleOffer`]
 /// message.
+#[autometrics]
 pub fn on_settle_offer(
     signed_channel: &mut SignedChannel,
     settle_offer: &SettleOffer,
@@ -875,6 +885,7 @@ pub fn on_settle_offer(
 /// Creates a [`SettleAccept`] message from the given [`SignedChannel`] and other
 /// parameters, updating the state of the channel at the same time. Expects the
 /// channel to be in [`SignedChannelState::SettledReceived`] state.
+#[autometrics]
 pub fn settle_channel_accept<S: Deref, T: Deref>(
     secp: &Secp256k1<All>,
     channel: &mut SignedChannel,
@@ -902,6 +913,7 @@ where
     )
 }
 
+#[autometrics]
 pub(crate) fn settle_channel_accept_internal<S: Deref, T: Deref>(
     secp: &Secp256k1<All>,
     channel: &mut SignedChannel,
@@ -1010,6 +1022,7 @@ where
 /// [`SettleAccept`] message, verifying the content of the message and updating
 /// the state of the channel at the same time.  Expects the channel to be in
 /// [`SignedChannelState::SettledOffered`] state.
+#[autometrics]
 pub fn settle_channel_confirm<T: Deref, S: Deref>(
     secp: &Secp256k1<All>,
     channel: &mut SignedChannel,
@@ -1040,6 +1053,7 @@ where
     )
 }
 
+#[autometrics]
 pub(crate) fn settle_channel_confirm_internal<T: Deref, S: Deref>(
     secp: &Secp256k1<All>,
     channel: &mut SignedChannel,
@@ -1154,6 +1168,7 @@ where
 /// [`SettleConfirm`] message, validating the message and updating the state of
 /// the channel at the same time.  Expects the channel to be in
 /// [`SignedChannelState::SettledAccepted`] state.
+#[autometrics]
 pub fn settle_channel_finalize<S: Deref>(
     secp: &Secp256k1<All>,
     channel: &mut SignedChannel,
@@ -1166,6 +1181,7 @@ where
     settle_channel_finalize_internal(secp, channel, settle_channel_confirm, signer, None)
 }
 
+#[autometrics]
 pub(crate) fn settle_channel_finalize_internal<S: Deref>(
     secp: &Secp256k1<All>,
     channel: &mut SignedChannel,
@@ -1278,6 +1294,7 @@ where
 /// channel and updates the state of the channel.
 /// Expects the channel to be in [`SignedChannelState::SettledConfirmed`]
 /// state.
+#[autometrics]
 pub fn settle_channel_on_finalize<C: Signing>(
     secp: &Secp256k1<C>,
     channel: &mut SignedChannel,
@@ -1353,6 +1370,7 @@ pub fn settle_channel_on_finalize<C: Signing>(
 
 /// Creates a [`Reject`] message and rolls back the state of the channel. Expects
 /// the channel to be in [`SignedChannelState::SettledOffered`] state.
+#[autometrics]
 pub fn reject_settle_offer(signed_channel: &mut SignedChannel) -> Result<Reject, Error> {
     get_signed_channel_state!(signed_channel, SettledReceived,)?;
 
@@ -1368,6 +1386,7 @@ pub fn reject_settle_offer(signed_channel: &mut SignedChannel) -> Result<Reject,
 
 /// Creates a [`RenewOffer`] message and [`OfferedContract`] for the given channel
 /// using the provided parameters.
+#[autometrics]
 pub fn renew_offer<C: Signing, S: Deref, T: Deref>(
     secp: &Secp256k1<C>,
     signed_channel: &mut SignedChannel,
@@ -1476,6 +1495,7 @@ where
 /// Update the state of the given [`SignedChannel`] from the given [`RenewOffer`].
 /// Expects the channel to be in one of [`SignedChannelState::Settled`] or
 /// [`SignedChannelState::Established`] state.
+#[autometrics]
 pub fn on_renew_offer(
     signed_channel: &mut SignedChannel,
     renew_offer: &RenewOffer,
@@ -1530,6 +1550,7 @@ pub fn on_renew_offer(
 /// parameters, updating the state of the channel and the associated contract the
 /// same time.  Expects the channel to be in [`SignedChannelState::RenewOffered`]
 /// state.
+#[autometrics]
 pub fn accept_channel_renewal<S: Deref, T: Deref>(
     secp: &Secp256k1<All>,
     signed_channel: &mut SignedChannel,
@@ -1555,6 +1576,7 @@ where
     )
 }
 
+#[autometrics]
 pub(crate) fn accept_channel_renewal_internal<S: Deref, T: Deref>(
     secp: &Secp256k1<All>,
     signed_channel: &mut SignedChannel,
@@ -1692,6 +1714,7 @@ where
 /// [`RenewAccept`] message, verifying the message and updating the state of the
 /// channel and associated contract the same time. Expects the channel to be in
 /// [`SignedChannelState::RenewOffered`] state.
+#[autometrics]
 pub fn verify_renew_accept_and_confirm<S: Deref, T: Deref>(
     secp: &Secp256k1<All>,
     renew_accept: &RenewAccept,
@@ -1720,6 +1743,7 @@ where
     )
 }
 
+#[autometrics]
 pub(crate) fn verify_renew_accept_and_confirm_internal<S: Deref, T: Deref>(
     secp: &Secp256k1<All>,
     renew_accept: &RenewAccept,
@@ -1870,6 +1894,7 @@ where
 /// [`RenewAccept`] message, verifying the message and updating the state of the
 /// channel and associated contract the same time. Expects the channel to be in
 /// [`SignedChannelState::RenewAccepted`] state.
+#[autometrics]
 pub fn verify_renew_confirm_and_finalize<S: Deref>(
     secp: &Secp256k1<All>,
     signed_channel: &mut SignedChannel,
@@ -1890,6 +1915,7 @@ where
     )
 }
 
+#[autometrics]
 pub(crate) fn verify_renew_confirm_and_finalize_internal<S: Deref>(
     secp: &Secp256k1<All>,
     signed_channel: &mut SignedChannel,
@@ -1994,6 +2020,7 @@ where
 }
 
 /// Verify the given [`RenewFinalize`] and update the state of the channel.
+#[autometrics]
 pub fn renew_channel_on_finalize(
     signed_channel: &mut SignedChannel,
     renew_finalize: &RenewFinalize,
@@ -2047,6 +2074,7 @@ pub fn renew_channel_on_finalize(
 /// Creates a [`Reject`] message and rolls back the state of the channel. Expects
 /// the channel to be in [`SignedChannelState::RenewOffered`] state and the local
 /// party not to be the offer party.
+#[autometrics]
 pub fn reject_renew_offer(signed_channel: &mut SignedChannel) -> Result<Reject, Error> {
     let is_offer = get_signed_channel_state!(signed_channel, RenewOffered, is_offer)?;
 
@@ -2068,6 +2096,7 @@ pub fn reject_renew_offer(signed_channel: &mut SignedChannel) -> Result<Reject, 
 
 /// Creates a [`CollaborativeCloseOffer`] message and update the state of the
 /// given [`SignedChannel`].
+#[autometrics]
 pub fn offer_collaborative_close<C: Signing, S: Deref, T: Deref>(
     secp: &Secp256k1<C>,
     signed_channel: &mut SignedChannel,
@@ -2136,6 +2165,7 @@ where
 
 /// Validates the given [`CollaborativeCloseOffer`] and updates the state of the
 /// channel.
+#[autometrics]
 pub fn on_collaborative_close_offer<T: Deref>(
     signed_channel: &mut SignedChannel,
     close_offer: &CollaborativeCloseOffer,
@@ -2188,6 +2218,7 @@ where
 
 /// Accept an offer to collaboratively close the channel, signing the
 /// closing transaction and returning it.
+#[autometrics]
 pub fn accept_collaborative_close_offer<C: Signing, S: Deref>(
     secp: &Secp256k1<C>,
     signed_channel: &mut SignedChannel,
@@ -2303,6 +2334,7 @@ fn get_settle_tx_and_adaptor_sig(
 }
 
 /// Update the state of the channel if currently in a state that can be rejected.
+#[autometrics]
 pub fn on_reject(signed_channel: &mut SignedChannel) -> Result<(), Error> {
     if let SignedChannelState::Established { .. } | SignedChannelState::Settled { .. } =
         signed_channel.state
@@ -2334,6 +2366,7 @@ pub fn on_reject(signed_channel: &mut SignedChannel) -> Result<(), Error> {
 }
 
 /// Sign the buffer transaction and closing CET and update the state of the channel.
+#[autometrics]
 pub fn initiate_unilateral_close_established_channel<S: Deref>(
     secp: &Secp256k1<All>,
     signed_channel: &mut SignedChannel,
@@ -2533,6 +2566,7 @@ where
 }
 
 /// Sign the settlement transaction and update the state of the channel.
+#[autometrics]
 pub fn close_settled_channel<S: Deref>(
     secp: &Secp256k1<All>,
     signed_channel: &mut SignedChannel,
@@ -2544,6 +2578,7 @@ where
     close_settled_channel_internal(secp, signed_channel, signer, None)
 }
 
+#[autometrics]
 pub(crate) fn close_settled_channel_internal<S: Deref>(
     secp: &Secp256k1<All>,
     signed_channel: &mut SignedChannel,

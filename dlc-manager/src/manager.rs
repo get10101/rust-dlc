@@ -19,6 +19,7 @@ use crate::sub_channel_manager::get_sub_channel_in_state;
 use crate::subchannel::{ClosingSubChannel, SubChannel, SubChannelState};
 use crate::utils::get_object_in_state;
 use crate::{ChannelId, ContractId, Signer};
+use autometrics::autometrics;
 use bitcoin::consensus::encode::serialize_hex;
 use bitcoin::Address;
 use bitcoin::Transaction;
@@ -160,6 +161,7 @@ where
     F::Target: FeeEstimator,
 {
     /// Create a new Manager struct.
+    #[autometrics]
     pub fn new(
         wallet: W,
         blockchain: B,
@@ -211,6 +213,7 @@ where
     }
 
     /// Function called to pass a DlcMessage to the Manager.
+    #[autometrics]
     pub fn on_dlc_message(
         &self,
         msg: &DlcMessage,
@@ -285,6 +288,7 @@ where
 
     /// Function called to create a new DLC. The offered contract will be stored
     /// and an OfferDlc message returned.
+    #[autometrics]
     pub fn send_offer(
         &self,
         contract_input: &ContractInput,
@@ -317,6 +321,7 @@ where
     }
 
     /// Function to call to accept a DLC for which an offer was received.
+    #[autometrics]
     pub fn accept_contract_offer(
         &self,
         contract_id: &ContractId,
@@ -348,6 +353,7 @@ where
 
     /// Function to call to check the state of the currently executing DLCs and
     /// update them if possible.
+    #[autometrics]
     pub fn periodic_check(&self) -> Result<(), Error> {
         self.check_signed_contracts()?;
         self.check_confirmed_contracts()?;
@@ -731,6 +737,7 @@ where
 {
     /// Create a new channel offer and return the [`dlc_messages::channel::OfferChannel`]
     /// message to be sent to the `counter_party`.
+    #[autometrics]
     pub fn offer_channel(
         &self,
         contract_input: &ContractInput,
@@ -769,6 +776,7 @@ where
     /// Accept a channel that was offered. Returns the [`dlc_messages::channel::AcceptChannel`]
     /// message to be sent, the updated [`crate::ChannelId`] and [`crate::ContractId`],
     /// as well as the public key of the offering node.
+    #[autometrics]
     pub fn accept_channel(
         &self,
         channel_id: &ChannelId,
@@ -816,6 +824,7 @@ where
     }
 
     /// Force close the channel with given [`crate::ChannelId`].
+    #[autometrics]
     pub fn force_close_channel(&self, channel_id: &ChannelId) -> Result<(), Error> {
         let channel = get_channel_in_state!(self, channel_id, Signed, None as Option<PublicKey>)?;
 
@@ -825,6 +834,7 @@ where
     /// Offer to settle the balance of a channel so that the counter party gets
     /// `counter_payout`. Returns the [`dlc_messages::channel::SettleChannelOffer`]
     /// message to be sent and the public key of the counter party node.
+    #[autometrics]
     pub fn settle_offer(
         &self,
         channel_id: &ChannelId,
@@ -852,6 +862,7 @@ where
 
     /// Accept a settlement offer, returning the [`SettleAccept`] message to be
     /// sent to the node with the returned [`PublicKey`] id.
+    #[autometrics]
     pub fn accept_settle_offer(
         &self,
         channel_id: &ChannelId,
@@ -897,6 +908,7 @@ where
     /// Returns a [`RenewOffer`] message as well as the [`PublicKey`] of the
     /// counter party's node to offer the establishment of a new contract in the
     /// channel.
+    #[autometrics]
     pub fn renew_offer(
         &self,
         channel_id: &ChannelId,
@@ -938,6 +950,7 @@ where
     /// Accept an offer to renew the contract in the channel. Returns the
     /// [`RenewAccept`] message to be sent to the peer with the returned
     /// [`PublicKey`] as node id.
+    #[autometrics]
     pub fn accept_renew_offer(
         &self,
         channel_id: &ChannelId,
@@ -994,6 +1007,7 @@ where
     /// Reject an offer to renew the contract in the channel. Returns the
     /// [`Reject`] message to be sent to the peer with the returned
     /// [`PublicKey`] node id.
+    #[autometrics]
     pub fn reject_renew_offer(&self, channel_id: &ChannelId) -> Result<(Reject, PublicKey), Error> {
         let mut signed_channel =
             get_channel_in_state!(self, channel_id, Signed, None as Option<PublicKey>)?;
@@ -1025,6 +1039,7 @@ where
     /// Returns a [`Reject`] message to be sent to the counter party of the
     /// channel to inform them that the local party does not wish to accept the
     /// proposed settle offer.
+    #[autometrics]
     pub fn reject_settle_offer(
         &self,
         channel_id: &ChannelId,
@@ -1046,6 +1061,7 @@ where
     /// party of the channel and update the state of the channel. Note that the
     /// channel will be forced closed after a timeout if the counter party does
     /// not broadcast the close transaction.
+    #[autometrics]
     pub fn offer_collaborative_close(
         &self,
         channel_id: &ChannelId,
@@ -1080,6 +1096,7 @@ where
 
     /// Accept an offer to collaboratively close the channel. The close transaction
     /// will be broadcast and the state of the channel updated.
+    #[autometrics]
     pub fn accept_collaborative_close(&self, channel_id: &ChannelId) -> Result<(), Error> {
         let mut signed_channel =
             get_channel_in_state!(self, channel_id, Signed, None as Option<PublicKey>)?;

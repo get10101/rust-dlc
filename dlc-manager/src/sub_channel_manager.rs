@@ -3,6 +3,7 @@
 
 use std::{marker::PhantomData, ops::Deref, sync::Mutex};
 
+use autometrics::autometrics;
 use bitcoin::{OutPoint, PackedLockTime, Script, Sequence};
 use dlc::{
     channel::{get_tx_adaptor_signature, sub_channel::LN_GLUE_TX_WEIGHT},
@@ -216,12 +217,12 @@ where
     }
 
     /// Handles a [`SubChannelMessage`].
+    #[autometrics]
     pub fn on_sub_channel_message(
         &self,
         msg: &SubChannelMessage,
         sender: &PublicKey,
     ) -> Result<Option<SubChannelMessage>, Error> {
-
         log::debug!("Processing on sub channel message: {:?}", msg);
         let result = match msg {
             SubChannelMessage::Offer(offer) => {
@@ -267,6 +268,7 @@ where
 
     /// Validates and stores contract information for a sub channel to be oferred.
     /// Returns a [`SubChannelOffer`] message to be sent to the counter party.
+    #[autometrics]
     pub fn offer_sub_channel(
         &self,
         channel_id: &[u8; 32],
@@ -425,6 +427,7 @@ where
 
     /// Accept an offer to establish a sub-channel within the Lightning Network channel identified
     /// by the given [`ChannelId`].
+    #[autometrics]
     pub fn accept_sub_channel(
         &self,
         channel_id: &ChannelId,
@@ -713,6 +716,7 @@ where
     }
 
     /// Start force closing the sub channel with given [`ChannelId`].
+    #[autometrics]
     pub fn initiate_force_close_sub_channel(&self, channel_id: &ChannelId) -> Result<(), Error> {
         let (mut signed, state) = get_sub_channel_in_state!(
             self.dlc_channel_manager,
@@ -800,6 +804,7 @@ where
     }
 
     /// Finalize the closing of the sub channel with specified [`ChannelId`].
+    #[autometrics]
     pub fn finalize_force_close_sub_channels(&self, channel_id: &ChannelId) -> Result<(), Error> {
         let (mut closing, state) = get_sub_channel_in_state!(
             self.dlc_channel_manager,
@@ -909,6 +914,7 @@ where
     }
 
     /// Generates an offer to collaboratively close a sub channel off chain, updating its state.
+    #[autometrics]
     pub fn offer_subchannel_close(
         &self,
         channel_id: &ChannelId,
@@ -989,6 +995,7 @@ where
     }
 
     /// Accept an offer to collaboratively close a sub channel off chain, updating its state.
+    #[autometrics]
     pub fn accept_subchannel_close_offer(
         &self,
         channel_id: &ChannelId,
@@ -1079,6 +1086,7 @@ where
     }
 
     /// Reject an offer to establish a sub channel.
+    #[autometrics]
     pub fn reject_sub_channel_offer(&self, channel_id: ChannelId) -> Result<Reject, Error> {
         let (mut sub_channel, _) = get_sub_channel_in_state!(
             self.dlc_channel_manager,
@@ -1097,6 +1105,7 @@ where
     }
 
     /// Reject an offer to collaboratively close a sub channel off chain.
+    #[autometrics]
     pub fn reject_sub_channel_close_offer(&self, channel_id: ChannelId) -> Result<Reject, Error> {
         let (mut sub_channel, state) = get_sub_channel_in_state!(
             self.dlc_channel_manager,
@@ -2069,7 +2078,8 @@ where
                                 revoked_tx_type: RevokedTxType::Split,
                             },
                         },
-                    );log::debug!("Acquired lock on chain monitor.");
+                    );
+                log::debug!("Acquired lock on chain monitor.");
 
                 let updated_channel = CloseConfirmedSubChannel {
                     signed_subchannel: state.signed_subchannel,
@@ -2280,6 +2290,7 @@ where
 
     /// Process pending actions, potentially generating messages that should be sent to the
     /// adequate peer.
+    #[autometrics]
     pub fn process_actions(&self) -> Vec<(SubChannelMessage, PublicKey)> {
         let mut actions = self.actions.lock().unwrap();
         let mut retain = Vec::new();
@@ -2423,6 +2434,7 @@ where
 
     /// Updtates the view of the blockchain processing transactions and acting upon them if
     /// necessary.
+    #[autometrics]
     pub fn check_for_watched_tx(&self) -> Result<(), Error> {
         let cur_height = self
             .dlc_channel_manager

@@ -12,6 +12,7 @@
 #![deny(unused_imports)]
 #![deny(missing_docs)]
 
+extern crate autometrics;
 extern crate bitcoin;
 extern crate core;
 extern crate miniscript;
@@ -20,6 +21,7 @@ extern crate secp256k1_zkp;
 #[cfg(feature = "serde")]
 extern crate serde;
 
+use autometrics::autometrics;
 use bitcoin::secp256k1::Scalar;
 use bitcoin::{
     blockdata::{
@@ -350,6 +352,7 @@ impl PartyParams {
 }
 
 /// Create the transactions for a DLC contract based on the provided parameters
+#[autometrics]
 pub fn create_dlc_transactions(
     offer_params: &PartyParams,
     accept_params: &PartyParams,
@@ -392,6 +395,7 @@ pub fn create_dlc_transactions(
     })
 }
 
+#[autometrics]
 pub(crate) fn create_fund_transaction_with_fees(
     offer_params: &PartyParams,
     accept_params: &PartyParams,
@@ -525,6 +529,7 @@ pub(crate) fn create_cets_and_refund_tx(
 }
 
 /// Create a contract execution transaction
+#[autometrics]
 pub fn create_cet(
     offer_output: TxOut,
     offer_payout_serial_id: u64,
@@ -550,6 +555,7 @@ pub fn create_cet(
 }
 
 /// Create a set of contract execution transaction for each provided outcome
+#[autometrics]
 pub fn create_cets(
     fund_tx_input: &TxIn,
     offer_payout_script_pubkey: &Script,
@@ -585,6 +591,7 @@ pub fn create_cets(
 }
 
 /// Create a funding transaction
+#[autometrics]
 pub fn create_funding_transaction(
     funding_script_pubkey: &Script,
     output_amount: u64,
@@ -633,6 +640,7 @@ pub fn create_funding_transaction(
 }
 
 /// Create a refund transaction
+#[autometrics]
 pub fn create_refund_transaction(
     offer_output: TxOut,
     accept_output: TxOut,
@@ -649,6 +657,7 @@ pub fn create_refund_transaction(
 }
 
 /// Create the multisig redeem script for the funding output
+#[autometrics]
 pub fn make_funding_redeemscript(a: &PublicKey, b: &PublicKey) -> Script {
     let (first, second) = if a <= b { (a, b) } else { (b, a) };
 
@@ -684,6 +693,7 @@ fn get_oracle_sig_point<C: secp256k1_zkp::Verification>(
 }
 
 /// Get an adaptor point generated using the given oracle information and messages.
+#[autometrics]
 pub fn get_adaptor_point_from_oracle_info<C: Verification>(
     secp: &Secp256k1<C>,
     oracle_infos: &[OracleInfo],
@@ -703,6 +713,7 @@ pub fn get_adaptor_point_from_oracle_info<C: Verification>(
 }
 
 /// Create an adaptor signature for the given cet using the provided adaptor point.
+#[autometrics]
 pub fn create_cet_adaptor_sig_from_point<C: secp256k1_zkp::Signing>(
     secp: &secp256k1_zkp::Secp256k1<C>,
     cet: &Transaction,
@@ -722,6 +733,7 @@ pub fn create_cet_adaptor_sig_from_point<C: secp256k1_zkp::Signing>(
 }
 
 /// Create an adaptor signature for the given cet using the provided oracle infos.
+#[autometrics]
 pub fn create_cet_adaptor_sig_from_oracle_info(
     secp: &secp256k1_zkp::Secp256k1<secp256k1_zkp::All>,
     cet: &Transaction,
@@ -743,6 +755,7 @@ pub fn create_cet_adaptor_sig_from_oracle_info(
 }
 
 /// Crerate a set of adaptor signatures for the given cet/message pairs.
+#[autometrics]
 pub fn create_cet_adaptor_sigs_from_points<C: secp256k1_zkp::Signing>(
     secp: &secp256k1_zkp::Secp256k1<C>,
     inputs: &[(&Transaction, &PublicKey)],
@@ -766,6 +779,7 @@ pub fn create_cet_adaptor_sigs_from_points<C: secp256k1_zkp::Signing>(
 }
 
 /// Crerate a set of adaptor signatures for the given cet/message pairs.
+#[autometrics]
 pub fn create_cet_adaptor_sigs_from_oracle_info(
     secp: &secp256k1_zkp::Secp256k1<secp256k1_zkp::All>,
     cets: &[Transaction],
@@ -817,6 +831,7 @@ fn signatures_to_secret(signatures: &[Vec<SchnorrSignature>]) -> Result<SecretKe
 /// Sign the given cet using own private key, adapt the counter party signature
 /// and place both signatures and the funding multi sig script pubkey on the
 /// witness stack
+#[autometrics]
 pub fn sign_cet<C: secp256k1_zkp::Signing>(
     secp: &secp256k1_zkp::Secp256k1<C>,
     cet: &mut Transaction,
@@ -846,6 +861,7 @@ pub fn sign_cet<C: secp256k1_zkp::Signing>(
 
 /// Verify that a given adaptor signature for a given cet is valid with respect
 /// to an adaptor point.
+#[autometrics]
 pub fn verify_cet_adaptor_sig_from_point(
     secp: &Secp256k1<secp256k1_zkp::All>,
     adaptor_sig: &EcdsaAdaptorSignature,
@@ -862,6 +878,7 @@ pub fn verify_cet_adaptor_sig_from_point(
 
 /// Verify that a given adaptor signature for a given cet is valid with respect
 /// to an oracle public key, nonce and a given message.
+#[autometrics]
 pub fn verify_cet_adaptor_sig_from_oracle_info(
     secp: &Secp256k1<secp256k1_zkp::All>,
     adaptor_sig: &EcdsaAdaptorSignature,
@@ -885,6 +902,7 @@ pub fn verify_cet_adaptor_sig_from_oracle_info(
 }
 
 /// Verify a signature for a given transaction input.
+#[autometrics]
 pub fn verify_tx_input_sig<V: Verification>(
     secp: &Secp256k1<V>,
     signature: &Signature,

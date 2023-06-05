@@ -3,6 +3,7 @@
 use std::ops::Deref;
 
 use crate::error::Error;
+use autometrics::autometrics;
 use dlc::{Payout, RangePayout};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -41,6 +42,7 @@ impl PayoutFunction {
     }
 
     /// Validate that the payout function is continuous and covers the interval [0, max_value]
+    #[autometrics]
     pub fn validate(&self, max_value: u64) -> Result<(), Error> {
         if !is_continuous(&self.payout_function_pieces) {
             return Err(Error::InvalidParameters(
@@ -96,6 +98,7 @@ impl PayoutFunction {
     }
 
     /// Generate the range payouts from the function.
+    #[autometrics]
     pub fn to_range_payouts(
         &self,
         total_collateral: u64,
@@ -125,6 +128,7 @@ pub enum PayoutFunctionPiece {
 
 impl PayoutFunctionPiece {
     /// Generate the range payouts for the function piece.
+    #[autometrics]
     pub fn to_range_payouts(
         &self,
         total_collateral: u64,
