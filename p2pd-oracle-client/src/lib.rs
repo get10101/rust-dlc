@@ -14,9 +14,9 @@
 extern crate chrono;
 extern crate dlc_manager;
 extern crate dlc_messages;
-extern crate reqwest;
 extern crate secp256k1_zkp;
 extern crate serde;
+extern crate ureq;
 
 use chrono::{DateTime, NaiveDateTime, SecondsFormat, Utc};
 use dlc_manager::error::Error as DlcManagerError;
@@ -75,11 +75,12 @@ fn get<T>(path: &str) -> Result<T, DlcManagerError>
 where
     T: serde::de::DeserializeOwned,
 {
-    reqwest::blocking::get(path)
+    ureq::get(path)
+        .call()
         .map_err(|x| {
             dlc_manager::error::Error::IOError(std::io::Error::new(std::io::ErrorKind::Other, x))
         })?
-        .json::<T>()
+        .into_json::<T>()
         .map_err(|e| dlc_manager::error::Error::OracleError(e.to_string()))
 }
 
