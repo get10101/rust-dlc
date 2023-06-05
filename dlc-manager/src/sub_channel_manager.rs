@@ -221,7 +221,9 @@ where
         msg: &SubChannelMessage,
         sender: &PublicKey,
     ) -> Result<Option<SubChannelMessage>, Error> {
-        match msg {
+
+        log::debug!("Processing on sub channel message: {:?}", msg);
+        let result = match msg {
             SubChannelMessage::Offer(offer) => {
                 self.on_subchannel_offer(offer, sender)?;
                 Ok(None)
@@ -258,7 +260,9 @@ where
                 self.on_sub_channel_reject(r, sender)?;
                 Ok(None)
             }
-        }
+        };
+        log::debug!("Finished processing on sub channel message: {:?}", msg);
+        result
     }
 
     /// Validates and stores contract information for a sub channel to be oferred.
@@ -269,6 +273,7 @@ where
         contract_input: &ContractInput,
         oracle_announcements: &[Vec<OracleAnnouncement>],
     ) -> Result<SubChannelOffer, Error> {
+        log::debug!("Enter offering sub channel");
         // TODO(tibo): deal with already split channel
         let channel_details = self
             .ln_channel_manager
@@ -414,6 +419,7 @@ where
             .get_store()
             .upsert_sub_channel(&sub_channel)?;
 
+        log::debug!("Finished offering sub channel");
         Ok(msg)
     }
 
@@ -1236,6 +1242,7 @@ where
         sub_channel_offer: &SubChannelOffer,
         counter_party: &PublicKey,
     ) -> Result<(), Error> {
+        log::debug!("Enter on_subchannel_offer");
         let channel_details = self
             .ln_channel_manager
             .get_channel_details(&sub_channel_offer.channel_id)
@@ -1356,6 +1363,7 @@ where
             .get_store()
             .upsert_sub_channel(&sub_channel)?;
 
+        log::debug!("Finish on_subchannel_offer");
         Ok(())
     }
 
@@ -1364,6 +1372,7 @@ where
         sub_channel_accept: &SubChannelAccept,
         counter_party: &PublicKey,
     ) -> Result<SubChannelConfirm, Error> {
+        log::debug!("Enter on_subchannel_accept");
         let (mut offered_sub_channel, state) = get_sub_channel_in_state!(
             self.dlc_channel_manager,
             sub_channel_accept.channel_id,
@@ -1612,6 +1621,7 @@ where
             ln_glue_signature,
         };
 
+        log::debug!("Trying to aquire chain monitor lock.");
         self.dlc_channel_manager
             .get_chain_monitor()
             .lock()
@@ -1623,6 +1633,7 @@ where
                     tx_type: TxType::SplitTx,
                 },
             );
+        log::debug!("Aquired chain monitor lock.");
 
         let signed_sub_channel = SignedSubChannel {
             own_per_split_point: state.per_split_point,
@@ -1651,6 +1662,8 @@ where
             .get_store()
             .persist_chain_monitor(&self.dlc_channel_manager.get_chain_monitor().lock().unwrap())?;
 
+        log::debug!("Finished on_subchannel_accept");
+
         Ok(msg)
     }
 
@@ -1659,6 +1672,7 @@ where
         sub_channel_confirm: &SubChannelConfirm,
         counter_party: &PublicKey,
     ) -> Result<SubChannelFinalize, Error> {
+        log::debug!("Enter on_subchannel_confirm");
         let channel_details = self
             .ln_channel_manager
             .get_channel_details(&sub_channel_confirm.channel_id)
@@ -1817,6 +1831,7 @@ where
             },
         )?;
 
+        log::debug!("Finish on_subchannel_confirm");
         Ok(msg)
     }
 
@@ -1825,6 +1840,7 @@ where
         sub_channel_finalize: &SubChannelFinalize,
         counter_party: &PublicKey,
     ) -> Result<(), Error> {
+        log::debug!("Enter on_subchannel_finalize");
         self.ln_channel_manager.with_useable_channel_lock(
             &sub_channel_finalize.channel_id,
             counter_party,
@@ -1882,6 +1898,7 @@ where
             },
         )?;
 
+        log::debug!("Finish on_subchannel_finalize");
         Ok(())
     }
 
@@ -1890,6 +1907,7 @@ where
         offer: &SubChannelCloseOffer,
         counter_party: &PublicKey,
     ) -> Result<(), Error> {
+        log::debug!("Enter on_sub_channel_close_offer");
         let (mut sub_channel, state) = get_sub_channel_in_state!(
             self.dlc_channel_manager,
             offer.channel_id,
@@ -1958,6 +1976,7 @@ where
             .get_store()
             .upsert_sub_channel(&sub_channel)?;
 
+        log::debug!("Finish on_sub_channel_close_offer");
         Ok(())
     }
 
@@ -1966,6 +1985,7 @@ where
         accept: &SubChannelCloseAccept,
         counter_party: &PublicKey,
     ) -> Result<SubChannelCloseConfirm, Error> {
+        log::debug!("Enter on_subchannel_close_accept");
         let channel_details = self
             .ln_channel_manager
             .get_channel_details(&accept.channel_id)
@@ -2031,6 +2051,7 @@ where
                     next_per_commitment_point: raa.next_per_commitment_point,
                 };
 
+                log::debug!("Trying to acquired lock on chain monitor.");
                 self.dlc_channel_manager
                     .get_chain_monitor()
                     .lock()
@@ -2048,7 +2069,7 @@ where
                                 revoked_tx_type: RevokedTxType::Split,
                             },
                         },
-                    );
+                    );log::debug!("Acquired lock on chain monitor.");
 
                 let updated_channel = CloseConfirmedSubChannel {
                     signed_subchannel: state.signed_subchannel,
@@ -2070,6 +2091,7 @@ where
             },
         )?;
 
+        log::debug!("Finsihed on_subchannel_close_accept");
         Ok(close_confirm)
     }
 
@@ -2078,6 +2100,7 @@ where
         confirm: &SubChannelCloseConfirm,
         counter_party: &PublicKey,
     ) -> Result<SubChannelCloseFinalize, Error> {
+        log::debug!("Enter on_sub_channel_close_confirm");
         let finalize = self.ln_channel_manager.with_useable_channel_lock(
             &confirm.channel_id,
             counter_party,
@@ -2187,6 +2210,7 @@ where
             },
         )?;
 
+        log::debug!("Finished on_sub_channel_close_confirm");
         Ok(finalize)
     }
 
@@ -2195,6 +2219,7 @@ where
         finalize: &SubChannelCloseFinalize,
         counter_party: &PublicKey,
     ) -> Result<(), Error> {
+        log::debug!("Enter on_sub_channel_close_finalize");
         self.ln_channel_manager.with_useable_channel_lock(
             &finalize.channel_id,
             counter_party,
@@ -2249,6 +2274,7 @@ where
             },
         )?;
 
+        log::debug!("Finsihed on_sub_channel_close_finalize");
         Ok(())
     }
 
@@ -2258,6 +2284,8 @@ where
         let mut actions = self.actions.lock().unwrap();
         let mut retain = Vec::new();
         let mut msgs = Vec::new();
+
+        log::debug!("Enter process_actions");
 
         for action in actions.drain(..) {
             match action {
@@ -2385,7 +2413,10 @@ where
             };
         }
 
+        log::debug!("Finished process_actions");
         actions.append(&mut retain);
+
+        log::debug!("Retrying {} actions", actions.len());
 
         msgs
     }

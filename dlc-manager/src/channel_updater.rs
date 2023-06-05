@@ -113,6 +113,7 @@ where
     B::Target: Blockchain,
     T::Target: Time,
 {
+    log::debug!("Enter offer_channel");
     let (offer_params, _, funding_inputs_info) = crate::utils::get_party_params(
         secp,
         contract.offer_collateral,
@@ -159,6 +160,7 @@ where
         cet_nsequence,
     };
 
+    log::debug!("Finished offer_channel");
     Ok((offered_channel, offered_contract))
 }
 
