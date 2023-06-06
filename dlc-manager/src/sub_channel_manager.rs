@@ -2012,6 +2012,8 @@ where
                     Some(*counter_party)
                 )?;
 
+                log::debug!("on_subchannel_close_accept: 1");
+
                 let (offer_fees, _) = per_party_fee(sub_channel.fee_rate_per_vb)?;
                 let ln_own_balance_msats = channel_details.outbound_capacity_msat
                     + channel_details.unspendable_punishment_reserve.unwrap_or(0) * 1000
@@ -2029,11 +2031,15 @@ where
                         ln_own_balance_msats,
                     )?;
 
+                log::debug!("on_subchannel_close_accept: 2");
+
                 let raa = self.ln_channel_manager.on_commitment_signed_get_raa(
                     channel_lock,
                     &accept.commit_signature,
                     &accept.htlc_signatures,
                 )?;
+
+                log::debug!("on_subchannel_close_accept: 3");
 
                 let per_split_seed = self
                     .dlc_channel_manager
@@ -2043,6 +2049,8 @@ where
                             .per_split_seed
                             .expect("to have a per split seed"),
                     )?;
+
+                log::debug!("on_subchannel_close_accept: 4");
 
                 let per_split_secret = SecretKey::from_slice(&build_commitment_secret(
                     per_split_seed.as_ref(),
@@ -2090,9 +2098,13 @@ where
 
                 sub_channel.state = SubChannelState::CloseConfirmed(updated_channel);
 
+                log::debug!("on_subchannel_close_accept: 5");
+
                 self.dlc_channel_manager
                     .get_store()
                     .upsert_sub_channel(&sub_channel)?;
+
+                log::debug!("on_subchannel_close_accept: 6");
 
                 self.dlc_channel_manager.get_store().persist_chain_monitor(
                     &self.dlc_channel_manager.get_chain_monitor().lock().unwrap(),
@@ -2241,6 +2253,8 @@ where
                     Some(*counter_party)
                 )?;
 
+                log::debug!("on_sub_channel_close_finalize: 1");
+
                 sub_channel
                     .counter_party_secrets
                     .provide_secret(
@@ -2251,6 +2265,8 @@ where
                         Error::InvalidParameters("Invalid split revocation secret".to_string())
                     })?;
 
+                log::debug!("on_sub_channel_close_finalize: 2");
+
                 let dlc_channel_id =
                     sub_channel
                         .get_dlc_channel_id(0)
@@ -2258,9 +2274,13 @@ where
                             "Could not get dlc channel id.".to_string(),
                         ))?;
 
+                log::debug!("on_sub_channel_close_finalize: 3");
+
                 let (dlc_channel, contract) = self
                     .dlc_channel_manager
                     .get_closed_sub_dlc_channel(dlc_channel_id, state.own_balance)?;
+
+                log::debug!("on_sub_channel_close_finalize: 4");
 
                 let revoke_and_ack = RevokeAndACK {
                     channel_id: finalize.channel_id,
@@ -2271,11 +2291,15 @@ where
                 self.ln_channel_manager
                     .revoke_and_ack(channel_lock, &revoke_and_ack)?;
 
+                log::debug!("on_sub_channel_close_finalize: 5");
+
                 sub_channel.state = SubChannelState::OffChainClosed;
 
                 self.dlc_channel_manager
                     .get_store()
                     .upsert_channel(Channel::Signed(dlc_channel), contract)?;
+
+                log::debug!("on_sub_channel_close_finalize: 6");
 
                 self.dlc_channel_manager
                     .get_store()
