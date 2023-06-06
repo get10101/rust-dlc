@@ -1369,6 +1369,7 @@ where
             Offered,
             Some(*counter_party)
         )?;
+        log::debug!("on_subchannel_accept: 1");
 
         let channel_details = self
             .ln_channel_manager
@@ -1379,6 +1380,7 @@ where
                     sub_channel_accept.channel_id
                 ))
             })?;
+        log::debug!("on_subchannel_accept: 2");
 
         let ln_rollback = (&channel_details).into();
         let offer_revoke_params = offered_sub_channel.own_base_points.get_revokable_params(
@@ -1386,6 +1388,7 @@ where
             &sub_channel_accept.revocation_basepoint,
             &state.per_split_point,
         );
+        log::debug!("on_subchannel_accept: 3");
 
         let accept_points = PartyBasePoints {
             own_basepoint: sub_channel_accept.own_basepoint,
@@ -1398,6 +1401,8 @@ where
             &offered_sub_channel.own_base_points.revocation_basepoint,
             &sub_channel_accept.first_per_split_point,
         );
+
+        log::debug!("on_subchannel_accept: 4");
 
         let funding_txo = channel_details.funding_txo.expect("to have a funding txo");
         let funding_outpoint = OutPoint {
@@ -1417,6 +1422,8 @@ where
                     "Could not get dlc channel id".to_string(),
                 ))?;
 
+        log::debug!("on_subchannel_accept: 5");
+
         let offered_channel = get_channel_in_state!(
             self.dlc_channel_manager,
             &temporary_channel_id,
@@ -1424,12 +1431,16 @@ where
             None as Option<PublicKey>
         )?;
 
+        log::debug!("on_subchannel_accept: 6");
+
         let offered_contract = get_contract_in_state!(
             self.dlc_channel_manager,
             &offered_channel.offered_contract_id,
             Offered,
             None as Option<PublicKey>
         )?;
+
+        log::debug!("on_subchannel_accept: 7");
 
         let (own_to_self_value_msat, _) = validate_and_get_ln_values_per_party(
             &channel_details,
@@ -1439,6 +1450,8 @@ where
             true,
         )?;
 
+        log::debug!("on_subchannel_accept: 8");
+
         let split_tx = dlc::channel::sub_channel::create_split_tx(
             &offer_revoke_params,
             &accept_revoke_params,
@@ -1447,6 +1460,8 @@ where
             offered_contract.total_collateral,
             offered_contract.fee_rate_per_vb,
         )?;
+
+        log::debug!("on_subchannel_accept: 9");
 
         let ln_output_value = split_tx.transaction.output[0].value;
 
@@ -1461,6 +1476,8 @@ where
             &offer_revoke_params.publish_pk.inner,
             &sub_channel_accept.split_adaptor_signature,
         )?;
+
+        log::debug!("on_subchannel_accept: 10");
 
         let channel_id = &channel_details.channel_id;
         let mut split_tx_adaptor_signature = None;
@@ -1494,6 +1511,8 @@ where
             &own_base_secret_key,
         );
 
+        log::debug!("on_subchannel_accept: 11");
+
         let glue_tx_output_value = ln_output_value
             - dlc::util::weight_to_fee(LN_GLUE_TX_WEIGHT, offered_contract.fee_rate_per_vb)?;
 
@@ -1507,6 +1526,7 @@ where
             Sequence(crate::manager::CET_NSEQUENCE),
             glue_tx_output_value,
         );
+        log::debug!("on_subchannel_accept: 12");
 
         let commitment_signed = self
             .ln_channel_manager
@@ -1520,6 +1540,7 @@ where
                 glue_tx_output_value,
                 own_to_self_value_msat,
             )?;
+        log::debug!("on_subchannel_accept: 12.1");
 
         let revoke_and_ack = self.ln_channel_manager.on_commitment_signed_get_raa(
             &sub_channel_accept.channel_id,
@@ -1527,6 +1548,8 @@ where
             &sub_channel_accept.commit_signature,
             &sub_channel_accept.htlc_signatures,
         )?;
+
+        log::debug!("on_subchannel_accept: 13");
 
         let accept_channel = AcceptChannel {
             temporary_channel_id: offered_channel.temporary_channel_id,
@@ -1572,6 +1595,8 @@ where
                 self.dlc_channel_manager.get_chain_monitor(),
             )?;
 
+        log::debug!("on_subchannel_accept: 14");
+
         dlc::verify_tx_input_sig(
             self.dlc_channel_manager.get_secp(),
             &sub_channel_accept.ln_glue_signature,
@@ -1582,6 +1607,8 @@ where
             &accept_revoke_params.own_pk.inner,
         )?;
 
+        log::debug!("on_subchannel_accept: 15");
+
         let ln_glue_signature = dlc::util::get_raw_sig_for_tx_input(
             self.dlc_channel_manager.get_secp(),
             &ln_glue_tx,
@@ -1590,6 +1617,8 @@ where
             ln_output_value,
             &own_secret_key,
         )?;
+
+        log::debug!("on_subchannel_accept: 16");
 
         let msg = SubChannelConfirm {
             channel_id: sub_channel_accept.channel_id,
@@ -1619,6 +1648,8 @@ where
             );
         log::debug!("Aquired chain monitor lock.");
 
+        log::debug!("on_subchannel_accept: 17");
+
         let signed_sub_channel = SignedSubChannel {
             own_per_split_point: state.per_split_point,
             counter_per_split_point: sub_channel_accept.first_per_split_point,
@@ -1641,6 +1672,8 @@ where
         self.dlc_channel_manager
             .get_store()
             .upsert_sub_channel(&offered_sub_channel)?;
+
+        log::debug!("on_subchannel_accept: 18");
 
         self.dlc_channel_manager
             .get_store()
