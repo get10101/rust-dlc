@@ -12,11 +12,11 @@ use lightning::{
     },
     ln::{
         chan_utils::CounterpartyCommitmentSecrets,
-        channelmanager::{ChannelDetails, ChannelLock, ChannelManager},
+        channelmanager::{ChannelDetails, ChannelManager},
         msgs::{ChannelMessageHandler, CommitmentSigned, RevokeAndACK},
     },
     routing::router::Router,
-    util::{errors::APIError, logger::Logger},
+    util::logger::Logger,
 };
 use secp256k1_zkp::{ecdsa::Signature, EcdsaAdaptorSignature, PublicKey, SecretKey};
 
@@ -296,49 +296,44 @@ pub struct ClosingSubChannel {
 }
 
 /// Provides the ability to access and update Lightning Network channels.
-pub trait LNChannelManager<SP>: ChannelMessageHandler
-where
-    SP: lightning::chain::keysinterface::ChannelSigner,
-{
+pub trait LNChannelManager: ChannelMessageHandler {
     /// Returns the details of the channel with given `channel_id` if found.
     fn get_channel_details(&self, channel_id: &ChannelId) -> Option<ChannelDetails>;
-    ///
-    fn with_useable_channel_lock<F, T>(
-        &self,
-        channel_id: &ChannelId,
-        counter_party_node_id: &PublicKey,
-        cb: F,
-    ) -> Result<T, APIError>
-    where
-        F: FnOnce(&mut ChannelLock<SP>) -> Result<T, APIError>;
     /// Updates the funding output for the channel and returns the [`CommitmentSigned`] message
     /// with signatures for the updated commitment transaction and HTLCs.
     fn get_updated_funding_outpoint_commitment_signed(
         &self,
-        channel_lock: &mut ChannelLock<SP>,
+        channel_id: &[u8; 32],
+        counter_party_node_id: &PublicKey,
         funding_outpoint: &OutPoint,
         channel_value_satoshis: u64,
         value_to_self_msat: u64,
-    ) -> Result<CommitmentSigned, APIError>;
+    ) -> Result<CommitmentSigned, Error>;
     /// Provides commitment transaction and HTLCs signatures and returns a [`RevokeAndACK`]
     /// message.
     fn on_commitment_signed_get_raa(
         &self,
-        channel_lock: &mut ChannelLock<SP>,
+        channel_id: &[u8; 32],
+        counter_party_node_id: &PublicKey,
         commitment_signature: &Signature,
         htlc_signatures: &[Signature],
-    ) -> Result<RevokeAndACK, APIError>;
+    ) -> Result<RevokeAndACK, Error>;
 
     /// Provides and verify a [`RevokeAndACK`] message.
     fn revoke_and_ack(
         &self,
-        channel_lock: &mut ChannelLock<SP>,
+        channel_id: &[u8; 32],
+        counter_party_node_id: &PublicKey,
         revoke_and_ack: &RevokeAndACK,
-    ) -> Result<(), APIError>;
+    ) -> Result<(), Error>;
 
     /// Gives the ability to access the funding secret key within the provided callback.
-    fn sign_with_fund_key_cb<F>(&self, channel_lock: &mut ChannelLock<SP>, cb: &mut F)
-    where
+    fn sign_with_fund_key_cb<F>(
+        &self,
+        channel_id: &[u8; 32],
+        counter_party_node_id: &PublicKey,
+        cb: &mut F,
+    ) where
         F: FnMut(&SecretKey);
 
     /// Force close the channel with given `channel_id` and `counter_party_node_id`.
@@ -352,16 +347,16 @@ where
     /// ones.
     fn set_funding_outpoint(
         &self,
-        channel_lock: &mut ChannelLock<SP>,
+        channel_id: &ChannelId,
+        counter_party_node_id: &PublicKey,
         funding_outpoint: &lightning::chain::transaction::OutPoint,
         channel_value_satoshis: u64,
         value_to_self_msat: u64,
-    );
+    ) -> Result<(), Error>;
 }
 
 impl<M: Deref, T: Deref, ES: Deref, NS: Deref, K: Deref, F: Deref, R: Deref, L: Deref>
-    LNChannelManager<<K::Target as SignerProvider>::Signer>
-    for ChannelManager<M, T, ES, NS, K, F, R, L>
+    LNChannelManager for ChannelManager<M, T, ES, NS, K, F, R, L>
 where
     M::Target: lightning::chain::Watch<<K::Target as SignerProvider>::Signer>,
     T::Target: BroadcasterInterface,
@@ -382,13 +377,15 @@ where
 
     fn get_updated_funding_outpoint_commitment_signed(
         &self,
-        channel_lock: &mut ChannelLock<<K::Target as SignerProvider>::Signer>,
+        channel_id: &[u8; 32],
+        counter_party_node_id: &PublicKey,
         funding_outpoint: &OutPoint,
         channel_value_satoshis: u64,
         value_to_self_msat: u64,
-    ) -> Result<CommitmentSigned, APIError> {
+    ) -> Result<CommitmentSigned, Error> {
         self.get_updated_funding_outpoint_commitment_signed(
-            channel_lock,
+            channel_id,
+            counter_party_node_id,
             &lightning::chain::transaction::OutPoint {
                 txid: funding_outpoint.txid,
                 index: funding_outpoint.vout as u16,
@@ -396,33 +393,46 @@ where
             channel_value_satoshis,
             value_to_self_msat,
         )
+        .map_err(|e| Error::InvalidParameters(format!("{e:?}")))
     }
 
     fn on_commitment_signed_get_raa(
         &self,
-        channel_lock: &mut ChannelLock<<K::Target as SignerProvider>::Signer>,
+        channel_id: &[u8; 32],
+        counter_party_node_id: &PublicKey,
         commitment_signature: &Signature,
         htlc_signatures: &[Signature],
-    ) -> Result<RevokeAndACK, APIError> {
-        self.on_commitment_signed_get_raa(channel_lock, commitment_signature, htlc_signatures)
+    ) -> Result<RevokeAndACK, Error> {
+        self.on_commitment_signed_get_raa(
+            channel_id,
+            counter_party_node_id,
+            commitment_signature,
+            htlc_signatures,
+        )
+        .map_err(|e| Error::InvalidParameters(format!("{e:?}")))
     }
 
     fn revoke_and_ack(
         &self,
-        channel_lock: &mut ChannelLock<<K::Target as SignerProvider>::Signer>,
+        channel_id: &[u8; 32],
+        counter_party_node_id: &PublicKey,
         revoke_and_ack: &RevokeAndACK,
-    ) -> Result<(), APIError> {
-        self.revoke_and_ack_commitment(channel_lock, revoke_and_ack)
+    ) -> Result<(), Error> {
+        self.revoke_and_ack_commitment(channel_id, counter_party_node_id, revoke_and_ack)
+            .map_err(|e| Error::InvalidParameters(format!("{e:?}")))
     }
 
     fn sign_with_fund_key_cb<SF>(
         &self,
-        channel_lock: &mut ChannelLock<<K::Target as SignerProvider>::Signer>,
+        channel_id: &[u8; 32],
+        counter_party_node_id: &PublicKey,
         cb: &mut SF,
     ) where
         SF: FnMut(&SecretKey),
     {
-        self.sign_with_fund_key_callback(channel_lock, cb);
+        self.sign_with_fund_key_callback(channel_id, counter_party_node_id, cb)
+            .map_err(|e| Error::InvalidParameters(format!("{e:?}")))
+            .unwrap();
     }
 
     fn force_close_channel(
@@ -436,31 +446,20 @@ where
 
     fn set_funding_outpoint(
         &self,
-        channel_lock: &mut ChannelLock<<K::Target as SignerProvider>::Signer>,
+        channel_id: &ChannelId,
+        counter_party_node_id: &PublicKey,
         funding_outpoint: &lightning::chain::transaction::OutPoint,
         channel_value_satoshis: u64,
         value_to_self_msat: u64,
-    ) {
+    ) -> Result<(), Error> {
         self.set_funding_outpoint(
-            channel_lock,
+            channel_id,
+            counter_party_node_id,
             funding_outpoint,
             channel_value_satoshis,
             value_to_self_msat,
-        );
-    }
-
-    fn with_useable_channel_lock<C, RV>(
-        &self,
-        channel_id: &ChannelId,
-        counter_party_node_id: &PublicKey,
-        cb: C,
-    ) -> Result<RV, APIError>
-    where
-        C: FnOnce(
-            &mut ChannelLock<<<K as Deref>::Target as SignerProvider>::Signer>,
-        ) -> Result<RV, APIError>,
-    {
-        self.with_useable_channel_lock(channel_id, counter_party_node_id, cb)
+        )
+        .map_err(|e| Error::InvalidParameters(format!("{e:?}")))
     }
 }
 

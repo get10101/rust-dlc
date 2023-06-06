@@ -1,8 +1,6 @@
 //! #Error
 use std::fmt;
 
-use lightning::util::errors::APIError;
-
 /// An error code.
 #[derive(Debug)]
 pub enum Error {
@@ -73,20 +71,6 @@ impl From<secp256k1_zkp::Error> for Error {
 impl From<secp256k1_zkp::UpstreamError> for Error {
     fn from(e: secp256k1_zkp::UpstreamError) -> Error {
         Error::SecpError(secp256k1_zkp::Error::Upstream(e))
-    }
-}
-
-impl From<Error> for APIError {
-    fn from(value: Error) -> Self {
-        APIError::ExternalError {
-            err: value.to_string(),
-        }
-    }
-}
-
-impl From<APIError> for Error {
-    fn from(value: APIError) -> Self {
-        Error::InvalidState(format!("{:?}", value))
     }
 }
 
