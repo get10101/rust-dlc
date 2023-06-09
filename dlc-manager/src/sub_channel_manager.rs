@@ -219,7 +219,6 @@ where
         msg: &SubChannelMessage,
         sender: &PublicKey,
     ) -> Result<Option<SubChannelMessage>, Error> {
-        log::debug!("Processing on sub channel message: {:?}", msg);
         let result = match msg {
             SubChannelMessage::Offer(offer) => {
                 self.on_subchannel_offer(offer, sender)?;
@@ -258,7 +257,6 @@ where
                 Ok(None)
             }
         };
-        log::debug!("Finished processing on sub channel message: {:?}", msg);
         result
     }
 
