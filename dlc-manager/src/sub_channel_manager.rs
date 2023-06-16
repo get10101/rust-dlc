@@ -2670,7 +2670,14 @@ where
 
             self.dlc_channel_manager.process_watched_txs(watch_res)?;
 
-            chain_monitor.increment_height(&block.block_hash());
+            // FIXME: We cannot safely call `increment_height` here because we know that we will
+            // call `Manager::periodic_check` subsequently, which will want to process the very same
+            // blocks. If we do increment the height then these blocks will be skipped in the
+            // `Manager::periodic_check` and we can miss processing important transactions.
+            //
+            // We should probably redesign this whole thing instead.
+
+            // chain_monitor.increment_height(&block.block_hash());
         }
 
         self.dlc_channel_manager
