@@ -38,6 +38,25 @@ impl Default for MessageHandler {
     }
 }
 
+impl lightning::util::events::OnionMessageProvider for MessageHandler {
+    fn next_onion_message_for_peer(&self, _peer_node_id: PublicKey) -> Option<lightning::ln::msgs::OnionMessage> { None }
+}
+
+impl lightning::ln::msgs::OnionMessageHandler for MessageHandler {
+    fn handle_onion_message(&self, _their_node_id: &PublicKey, _msg: &lightning::ln::msgs::OnionMessage) {}
+    fn peer_connected(&self, _their_node_id: &PublicKey, _init: &lightning::ln::msgs::Init, _inbound: bool) -> Result<(), ()> { Ok(()) }
+    fn peer_disconnected(&self, their_node_id: &PublicKey) {
+        // In case the the peer is disconnected, but messages have already been received. It could happen that our retry logic interferes with
+        // pending unprocessed messages. see also https://github.com/get10101/10101/issues/792. To be on the safe side we are clearing any
+        // received, but unprocessed messages for that peer upon a disconnected.
+        self.clear_received_messages_by_node(their_node_id);
+    }
+    fn provided_node_features(&self) -> lightning::ln::features::NodeFeatures { lightning::ln::features::NodeFeatures::empty() }
+    fn provided_init_features(&self, _their_node_id: &PublicKey) -> lightning::ln::features::InitFeatures {
+        lightning::ln::features::InitFeatures::empty()
+    }
+}
+
 impl MessageHandler {
     /// Creates a new instance of a [`MessageHandler`]
     pub fn new() -> Self {
@@ -54,6 +73,17 @@ impl MessageHandler {
         let mut ret = Vec::new();
         std::mem::swap(&mut *self.msg_received.lock().unwrap(), &mut ret);
         ret
+    }
+
+    /// Clears all messages received by the given node.
+    pub fn clear_received_messages_by_node(&self, node: &PublicKey) {
+        let messages = &mut *self.msg_received.lock().unwrap();
+        let before = messages.len();
+        messages.retain(|(pubkey, message) | {
+            pubkey.ne(node) && !(matches!(message, Message::SubChannel(SubChannelMessage::Confirm(_))) || matches!(message, Message::SubChannel(SubChannelMessage::CloseConfirm(_))))
+        });
+        let message_count = before - messages.len();
+        log::warn!("Cleared {message_count} received messages from node: {node} after disconnect.");
     }
 
     /// Send a message to the peer with given node id. Not that the message is not
