@@ -26,8 +26,7 @@ use crate::{
 };
 use bitcoin::{OutPoint, Script, Sequence, Transaction};
 use dlc::{
-    channel::{get_tx_adaptor_signature, verify_tx_adaptor_signature, DlcChannelTransactions},
-    PartyParams,
+    channel::{get_tx_adaptor_signature, verify_tx_adaptor_signature, DlcChannelTransactions}, util::dlc_channel_extra_fee, PartyParams
 };
 use dlc_messages::{
     channel::{
@@ -116,6 +115,8 @@ where
     B::Target: Blockchain,
     T::Target: Time,
 {
+    let extra_fee = dlc_channel_extra_fee(contract.fee_rate)?;
+
     let (offer_params, _, funding_inputs_info) = crate::utils::get_party_params(
         secp,
         contract.offer_collateral,
@@ -123,6 +124,7 @@ where
         wallet,
         blockchain,
         !is_sub_channel,
+        extra_fee,
     )?;
     let party_points = crate::utils::get_party_base_points(secp, wallet)?;
 
@@ -215,6 +217,8 @@ where
             let per_update_seed = wallet.get_secret_key_for_pubkey(&per_update_seed_pk)?;
             (params, funding_inputs_info, accept_points, per_update_seed)
         } else {
+            let extra_fee = dlc_channel_extra_fee(offered_contract.fee_rate_per_vb)?;
+
             let (params, _, funding_input_infos) = crate::utils::get_party_params(
                 secp,
                 offered_contract.total_collateral - offered_contract.offer_params.collateral,
@@ -222,6 +226,7 @@ where
                 wallet,
                 blockchain,
                 sub_channel_info.is_none(),
+                extra_fee
             )?;
             let accept_points = crate::utils::get_party_base_points(secp, wallet)?;
             let per_update_seed = wallet.get_new_secret_key()?;
