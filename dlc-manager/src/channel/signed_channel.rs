@@ -348,6 +348,9 @@ impl SignedChannel {
     pub fn get_contract_id(&self) -> Option<ContractId> {
         self.state.get_contract_id()
     }
+
+    /// Returns the reference id associated with the signed channel.
+    pub fn get_reference_id(&self) -> Option<ReferenceId> { self.state.get_reference_id() }
 }
 
 impl SignedChannelState {
@@ -365,6 +368,23 @@ impl SignedChannelState {
             SignedChannelState::RenewFinalized { contract_id, .. } => Some(*contract_id),
             SignedChannelState::Closing { contract_id, .. } => Some(*contract_id),
             _ => None,
+        }
+    }
+
+    fn get_reference_id(&self) -> Option<ReferenceId> {
+        match self {
+            SignedChannelState::Established { reference_id, ..} => *reference_id,
+            SignedChannelState::SettledOffered { reference_id, ..} => *reference_id,
+            SignedChannelState::SettledReceived { reference_id, ..} => *reference_id,
+            SignedChannelState::SettledAccepted { reference_id, ..} => *reference_id,
+            SignedChannelState::SettledConfirmed { reference_id, ..} => *reference_id,
+            SignedChannelState::Settled { reference_id, ..} => *reference_id,
+            SignedChannelState::RenewOffered { reference_id, ..} => *reference_id,
+            SignedChannelState::RenewAccepted { reference_id, ..} => *reference_id,
+            SignedChannelState::RenewConfirmed { reference_id, ..} => *reference_id,
+            SignedChannelState::RenewFinalized { reference_id, ..} => *reference_id,
+            SignedChannelState::Closing { reference_id, ..} => *reference_id,
+            SignedChannelState::CollaborativeCloseOffered { reference_id, ..} => *reference_id,
         }
     }
 }

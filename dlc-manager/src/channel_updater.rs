@@ -1381,17 +1381,18 @@ pub fn settle_channel_on_finalize<C: Signing>(
 /// Creates a [`Reject`] message and rolls back the state of the channel. Expects
 /// the channel to be in [`SignedChannelState::SettledOffered`] state.
 pub fn reject_settle_offer(signed_channel: &mut SignedChannel) -> Result<Reject, Error> {
+    get_signed_channel_state!(signed_channel, SettledReceived, reference_id)?;
+
     signed_channel.state = signed_channel
         .roll_back_state
         .take()
         .expect("to have a rollback state");
 
-    let reference_id = get_signed_channel_state!(signed_channel, SettledReceived, reference_id)?;
-
+    let reference_id = signed_channel.get_reference_id();
     Ok(Reject {
         channel_id: signed_channel.channel_id,
         timestamp: get_unix_time_now(),
-        reference_id: *reference_id
+        reference_id
     })
 }
 
