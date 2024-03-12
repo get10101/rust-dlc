@@ -71,6 +71,20 @@ struct AttestationResponse {
     values: Vec<String>,
 }
 
+#[cfg(target_arch = "wasm32")]
+fn get<T>(path: &str) -> Result<T, DlcManagerError>
+    where
+        T: serde::de::DeserializeOwned,
+{
+    pollster::block_on(pollster::block_on(reqwest::get(path))
+        .map_err(|x| {
+            dlc_manager::error::Error::IOError(std::io::Error::new(std::io::ErrorKind::Other, x))
+        })?
+        .json::<T>())
+        .map_err(|e| dlc_manager::error::Error::OracleError(e.to_string()))
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 fn get<T>(path: &str) -> Result<T, DlcManagerError>
 where
     T: serde::de::DeserializeOwned,
