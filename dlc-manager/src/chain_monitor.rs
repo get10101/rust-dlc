@@ -2,7 +2,6 @@
 //! transactions of interest in the context of DLC.
 
 use std::collections::HashMap;
-use std::ops::Deref;
 
 use bitcoin::{OutPoint, Transaction, Txid};
 use dlc_messages::ser_impls::{
@@ -12,7 +11,6 @@ use lightning::ln::msgs::DecodeError;
 use lightning::util::ser::{Readable, Writeable, Writer};
 use secp256k1_zkp::EcdsaAdaptorSignature;
 
-use crate::Blockchain;
 
 /// A `ChainMonitor` keeps a list of transaction ids to watch for in the blockchain,
 /// and some associated information used to apply an action when the id is seen.
@@ -135,56 +133,20 @@ impl ChainMonitor {
         self.watched_tx.remove(txid);
     }
 
-    /// Check if any watched transactions have been confirmed.
-    pub(crate) fn check_transactions<B>(&mut self, blockchain: &B)
-    where
-        B: Deref,
-        B::Target: Blockchain,
-    {
-        for (txid, state) in self.watched_tx.iter_mut() {
-            let confirmations = match blockchain.get_transaction_confirmations(txid) {
-                Ok(confirmations) => confirmations,
-                Err(e) => {
-                    log::error!("Failed to get transaction confirmations for {txid}: {e}");
-                    continue;
-                }
-            };
+    pub(crate) fn get_watched_txs(&self) -> Vec<Txid> {
+        self.watched_tx.keys().cloned().collect()
+    }
 
-            if confirmations > 0 {
-                let tx = match blockchain.get_transaction(txid) {
-                    Ok(tx) => tx,
-                    Err(e) => {
-                        log::error!("Failed to get transaction for {txid}: {e}");
-                        continue;
-                    }
-                };
+    pub(crate) fn get_watched_txos(&self) -> Vec<OutPoint> {
+        self.watched_txo.keys().cloned().collect()
+    }
 
-                state.confirm(tx.clone());
-            }
-        }
+    pub(crate) fn confirm_tx(&mut self, tx: Transaction) {
+        if let Some(state) = self.watched_tx.get_mut(&tx.txid()) { state.confirm(tx) }
+    }
 
-        for (txo, state) in self.watched_txo.iter_mut() {
-            let (confirmations, txid) = match blockchain.get_txo_confirmations(txo) {
-                Ok(Some((confirmations, txid))) => (confirmations, txid),
-                Ok(None) => continue,
-                Err(e) => {
-                    log::error!("Failed to get transaction confirmations for {txo}: {e}");
-                    continue;
-                }
-            };
-
-            if confirmations > 0 {
-                let tx = match blockchain.get_transaction(&txid) {
-                    Ok(tx) => tx,
-                    Err(e) => {
-                        log::error!("Failed to get transaction for {txid}: {e}");
-                        continue;
-                    }
-                };
-
-                state.confirm(tx.clone());
-            }
-        }
+    pub(crate) fn confirm_txo(&mut self, txo: &OutPoint, tx: Transaction) {
+        if let Some(state) = self.watched_txo.get_mut(txo) { state.confirm(tx) }
     }
 
     /// Heuristic to figure out if we sent the last settle offer.

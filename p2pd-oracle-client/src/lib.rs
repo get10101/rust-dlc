@@ -18,7 +18,7 @@ extern crate reqwest;
 extern crate secp256k1_zkp;
 extern crate serde;
 
-use chrono::{DateTime, NaiveDateTime, SecondsFormat, Utc};
+use chrono::{DateTime, SecondsFormat, Utc};
 use dlc_manager::error::Error as DlcManagerError;
 use dlc_manager::Oracle;
 use dlc_messages::oracle_msgs::{OracleAnnouncement, OracleAttestation};
@@ -132,10 +132,9 @@ fn parse_event_id(event_id: &str) -> Result<(String, DateTime<Utc>), DlcManagerE
     let timestamp: i64 = timestamp_str
         .parse()
         .map_err(|_| DlcManagerError::OracleError("Invalid timestamp format".to_string()))?;
-    let naive_date_time = NaiveDateTime::from_timestamp_opt(timestamp, 0).ok_or_else(|| {
+    let date_time = DateTime::<Utc>::from_timestamp(timestamp, 0).ok_or_else(|| {
         DlcManagerError::InvalidParameters(format!("Invalid timestamp {} in event id", timestamp))
     })?;
-    let date_time = DateTime::from_naive_utc_and_offset(naive_date_time, Utc);
     Ok((asset_id.to_string(), date_time))
 }
 

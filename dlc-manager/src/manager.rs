@@ -377,17 +377,72 @@ where
     /// Function to call to check the state of the currently executing DLCs and
     /// update them if possible.
     pub fn periodic_check(&self) -> Result<(), Error> {
-        {
-            let mut chain_monitor = self.chain_monitor.lock().unwrap();
-            chain_monitor.check_transactions(&self.blockchain);
-        }
-
+        self.check_transaction_confirmations();
         self.check_signed_contracts()?;
         self.check_confirmed_contracts()?;
         self.check_preclosed_contracts()?;
         self.channel_checks()?;
 
         Ok(())
+    }
+
+    fn check_transaction_confirmations(&self) {
+        let blockchain = &self.blockchain;
+
+        let (txs, txos) = {
+            let chain_monitor = self.chain_monitor.lock().unwrap();
+            let txs = chain_monitor.get_watched_txs();
+            let txos = chain_monitor.get_watched_txos();
+
+            (txs, txos)
+        };
+
+        for txid in txs {
+            let confirmations = match blockchain.get_transaction_confirmations(&txid) {
+                Ok(confirmations) => confirmations,
+                Err(e) => {
+                    log::error!("Failed to get transaction confirmations for {txid}: {e}");
+                    continue;
+                }
+            };
+
+            if confirmations > 0 {
+                let tx = match blockchain.get_transaction(&txid) {
+                    Ok(tx) => tx,
+                    Err(e) => {
+                        log::error!("Failed to get transaction for {txid}: {e}");
+                        continue;
+                    }
+                };
+
+                let mut chain_monitor = self.chain_monitor.lock().unwrap();
+                chain_monitor.confirm_tx(tx);
+            }
+        }
+
+        for txo in txos {
+            let (confirmations, txid) = match blockchain.get_txo_confirmations(&txo) {
+                Ok(Some((confirmations, txid))) => (confirmations, txid),
+                Ok(None) => continue,
+                Err(e) => {
+                    log::error!("Failed to get transaction confirmations for {txo}: {e}");
+                    continue;
+                }
+            };
+
+            if confirmations > 0 {
+                let tx = match blockchain.get_transaction(&txid) {
+                    Ok(tx) => tx,
+                    Err(e) => {
+                        log::error!("Failed to get transaction for {txid}: {e}");
+                        continue;
+                    }
+                };
+
+                let mut chain_monitor = self.chain_monitor.lock().unwrap();
+                chain_monitor.confirm_txo(&txo, tx.clone());
+            }
+        }
     }
 
     fn on_offer_message(
