@@ -48,7 +48,7 @@ use bitcoin::consensus::Decodable;
 use bitcoin::hashes::Hash;
 
 /// The number of confirmations required before moving a [`Contract`] to the confirmed state.
-pub const NB_CONFIRMATIONS: u32 = 1;
+pub const NB_CONFIRMATIONS: u32 = 0;
 /// The delay to set the refund value to.
 pub const REFUND_DELAY: u32 = 86400 * 7;
 /// The nSequence value used for CETs in DLC channels
@@ -577,6 +577,7 @@ where
         let confirmations = self.blockchain.get_transaction_confirmations(
             &contract.accepted_contract.dlc_transactions.fund.txid(),
         )?;
+        #[allow(clippy::absurd_extreme_comparisons)]
         if confirmations >= NB_CONFIRMATIONS {
             self.store
                 .update_contract(&Contract::Confirmed(contract.clone()))?;
@@ -707,6 +708,7 @@ where
         let confirmations = self
             .blockchain
             .get_transaction_confirmations(&broadcasted_txid)?;
+        #[allow(clippy::absurd_extreme_comparisons)]
         if confirmations >= NB_CONFIRMATIONS {
             let closed_contract = ClosedContract {
                 attestations: contract.attestations.clone(),
@@ -744,6 +746,7 @@ where
             .blockchain
             .get_transaction_confirmations(&signed_cet.txid())?;
 
+        #[allow(clippy::absurd_extreme_comparisons)]
         if confirmations < 1 {
             // TODO(tibo): if this fails because another tx is already in
             // mempool or blockchain, we might have been cheated. There is
@@ -1361,6 +1364,7 @@ where
 
         // TODO(lucas): No need to send it again if it is in mempool, unless we want to bump the
         // fee.
+        #[allow(clippy::absurd_extreme_comparisons)]
         if confirmations < 1 {
             self.blockchain.send_transaction(claim_tx)?;
         } else if confirmations >= NB_CONFIRMATIONS {
