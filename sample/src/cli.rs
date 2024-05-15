@@ -208,7 +208,7 @@ pub(crate) async fn poll_for_user_input(
                                 manager_clone
                                     .lock()
                                     .unwrap()
-                                    .offer_channel(&contract_input, pubkey, None)
+                                    .offer_channel(&contract_input, pubkey, dlc::FeeConfig::EvenSplit, None)
                                     .expect("Error sending offer channel"),
                             ))
                         }
@@ -337,7 +337,7 @@ pub(crate) async fn poll_for_user_input(
                     let (msg, _, _, node_id) = dlc_manager
                         .lock()
                         .unwrap()
-                        .accept_channel(&channel_id)
+                        .accept_channel(&channel_id, dlc::FeeConfig::EvenSplit)
                         .expect("Error accepting channel.");
                     dlc_message_handler
                         .send_message(node_id, DlcMessage::Channel(ChannelMessage::Accept(msg)));

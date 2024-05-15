@@ -4,7 +4,7 @@ use std::ops::Deref;
 
 use bitcoin::psbt::PartiallySignedTransaction;
 use bitcoin::{consensus::Decodable, Script, Transaction, Witness};
-use dlc::{DlcTransactions, PartyParams};
+use dlc::{DlcTransactions, PartyParams, FeeConfig};
 use dlc_messages::{
     oracle_msgs::{OracleAnnouncement, OracleAttestation},
     AcceptDlc, FundingSignature, FundingSignatures, OfferDlc, SignDlc, WitnessElement,
@@ -51,6 +51,8 @@ where
         blockchain,
         true,
         0,
+        true,
+        FeeConfig::EvenSplit
     )?;
 
     let offered_contract = OfferedContract::new(
@@ -91,6 +93,8 @@ where
         blockchain,
         true,
         0,
+        false,
+        FeeConfig::EvenSplit,
     )?;
 
     let dlc_transactions = dlc::create_dlc_transactions(
@@ -102,6 +106,7 @@ where
         0,
         offered_contract.cet_locktime,
         offered_contract.fund_output_serial_id,
+        FeeConfig::EvenSplit,
     )?;
 
     let fund_output_value = dlc_transactions.get_fund_output().value;
@@ -261,6 +266,7 @@ where
         0,
         offered_contract.cet_locktime,
         offered_contract.fund_output_serial_id,
+        FeeConfig::EvenSplit,
     )?;
     let fund_output_value = dlc_transactions.get_fund_output().value;
     let fund_privkey =

@@ -680,6 +680,44 @@ impl Display for WireMessage {
 
 impl_type_writeable_for_enum!(WireMessage, { Message, SegmentStart, SegmentChunk });
 
+/// Configure who pays for the transaction fees involved in a DLC channel.
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(rename_all = "camelCase")
+)]
+pub enum FeeConfig {
+    /// The transaction fees are split evenly between the offer party and the accept party.
+    EvenSplit,
+    /// The transaction fees are paid by the offer party.
+    AllOffer,
+    /// The transaction fees are paid by the accept party.
+    AllAccept,
+}
+
+impl_dlc_writeable_enum!(FeeConfig,;;;(0, EvenSplit), (1, AllOffer), (2, AllAccept));
+
+impl From<dlc::FeeConfig> for FeeConfig {
+    fn from(value: dlc::FeeConfig) -> Self {
+        match value {
+            dlc::FeeConfig::EvenSplit => Self::EvenSplit,
+            dlc::FeeConfig::AllOffer => Self::AllOffer,
+            dlc::FeeConfig::AllAccept => Self::AllAccept,
+        }
+    }
+}
+
+impl From<FeeConfig> for dlc::FeeConfig {
+    fn from(value: FeeConfig) -> Self {
+        match value {
+            FeeConfig::EvenSplit => Self::EvenSplit,
+            FeeConfig::AllOffer => Self::AllOffer,
+            FeeConfig::AllAccept => Self::AllAccept,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use secp256k1_zkp::SECP256K1;

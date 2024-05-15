@@ -6,6 +6,7 @@ use std::{collections::HashMap, marker::PhantomData, ops::Deref, sync::Mutex};
 use bitcoin::{hashes::hex::ToHex, OutPoint, PackedLockTime, Script, Sequence, Transaction, Txid};
 use bitcoin::hashes::Hash;
 use dlc::{channel::sub_channel::LN_GLUE_TX_WEIGHT, PartyParams};
+use dlc_messages::FeeConfig;
 use dlc_messages::{
     channel::{AcceptChannel, OfferChannel},
     oracle_msgs::OracleAnnouncement,
@@ -405,6 +406,7 @@ where
             self.dlc_channel_manager.get_blockchain(),
             self.dlc_channel_manager.get_time(),
             temporary_channel_id,
+            FeeConfig::EvenSplit.into(),
             true,
             None
         )?;
@@ -679,6 +681,7 @@ where
                         self.dlc_channel_manager.get_blockchain(),
                         Some(sub_channel_info),
                         params,
+                        FeeConfig::EvenSplit.into(),
                     )?;
 
                 let ln_glue_signature = dlc::util::get_raw_sig_for_tx_input(
@@ -1689,7 +1692,8 @@ where
             cet_locktime: sub_channel_offer.cet_locktime,
             refund_locktime: sub_channel_offer.refund_locktime,
             cet_nsequence: sub_channel_offer.cet_nsequence,
-            reference_id: None
+            reference_id: None,
+            fee_config: Some(FeeConfig::EvenSplit)
         };
 
         let (offered_channel, offered_contract) =
@@ -1918,6 +1922,7 @@ where
                 self.dlc_channel_manager.get_wallet(),
                 Some(sub_channel_info),
                 self.dlc_channel_manager.get_chain_monitor(),
+                FeeConfig::EvenSplit.into(),
             )?;
 
         dlc::verify_tx_input_sig(
@@ -3307,7 +3312,8 @@ where
                                     is_offer_party: false,
                                     counter_party: dlc_channel.counter_party,
                                     cet_nsequence: CET_NSEQUENCE,
-                                    reference_id: None
+                                    reference_id: None,
+                                    fee_config: Some(FeeConfig::EvenSplit)
                                 };
                                 self.dlc_channel_manager
                                     .get_store()
@@ -3383,7 +3389,8 @@ where
                                     counter_party: dlc_channel.counter_party,
                                     // TODO(tibo): use value from original offer
                                     cet_nsequence: CET_NSEQUENCE,
-                                    reference_id: None
+                                    reference_id: None,
+                                    fee_config: Some(FeeConfig::EvenSplit)
                                 };
                                 self.ln_channel_manager.set_funding_outpoint(
                                     channel_lock,
@@ -3451,7 +3458,8 @@ where
                                             is_offer_party: false,
                                             counter_party: dlc_channel.counter_party,
                                             cet_nsequence: CET_NSEQUENCE,
-                                            reference_id: None
+                                            reference_id: None,
+                                            fee_config: Some(FeeConfig::EvenSplit),
                                         };
                                         self.dlc_channel_manager
                                             .get_store()

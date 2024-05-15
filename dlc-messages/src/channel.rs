@@ -8,7 +8,7 @@ use secp256k1_zkp::{
     ecdsa::Signature, EcdsaAdaptorSignature, PublicKey, Secp256k1, SecretKey, Verification,
 };
 
-use crate::FundingSignatures;
+use crate::{FeeConfig, FundingSignatures};
 use crate::{
     contract_msgs::ContractInfo,
     ser_impls::{read_ecdsa_adaptor_signature, write_ecdsa_adaptor_signature},
@@ -81,7 +81,9 @@ pub struct OfferChannel {
     /// The nSequence value to use for the CETs.
     pub cet_nsequence: u32,
     /// The reference id set by the api user.
-    pub reference_id: Option<[u8; 32]>
+    pub reference_id: Option<[u8; 32]>,
+    /// How the two parties pay for transaction fees.
+    pub fee_config: Option<FeeConfig>,
 }
 
 impl_dlc_writeable!(OfferChannel, {
@@ -107,7 +109,8 @@ impl_dlc_writeable!(OfferChannel, {
         (cet_locktime, writeable),
         (refund_locktime, writeable),
         (cet_nsequence, writeable),
-        (reference_id, option)}
+        (reference_id, option),
+        (fee_config, option)}
 );
 
 impl OfferChannel {

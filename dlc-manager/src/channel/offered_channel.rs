@@ -2,8 +2,7 @@
 //! the model for it and method for working with it.
 
 use dlc::PartyParams;
-use dlc_messages::channel::OfferChannel;
-// use dlc_messages::channel::OfferChannel;
+use dlc_messages::{channel::OfferChannel, FeeConfig};
 use secp256k1_zkp::PublicKey;
 
 use crate::{contract::offered_contract::OfferedContract, conversion_utils::get_tx_input_infos, error::Error, ContractId, DlcChannelId, ReferenceId};
@@ -39,7 +38,9 @@ pub struct OfferedChannel {
     /// The nSequence value to use for the CETs.
     pub cet_nsequence: u32,
     /// The reference id set by the api user.
-    pub reference_id: Option<ReferenceId>
+    pub reference_id: Option<ReferenceId>,
+    /// How the two parties pay for transaction fees.
+    pub fee_config: Option<FeeConfig>,
 }
 
 impl OfferedChannel {
@@ -72,7 +73,8 @@ impl OfferedChannel {
             fee_rate_per_vb: offered_contract.fee_rate_per_vb,
             fund_output_serial_id: offered_contract.fund_output_serial_id,
             cet_nsequence: crate::manager::CET_NSEQUENCE,
-            reference_id
+            reference_id,
+            fee_config: self.fee_config,
         }
     }
 
@@ -98,6 +100,7 @@ impl OfferedChannel {
             counter_party,
             cet_nsequence: offer_channel.cet_nsequence,
             reference_id: offer_channel.reference_id,
+            fee_config: offer_channel.fee_config,
         };
 
         let (inputs, input_amount) = get_tx_input_infos(&offer_channel.funding_inputs)?;

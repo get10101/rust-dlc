@@ -273,7 +273,15 @@ impl PartyParams {
         &self,
         fee_rate_per_vb: u64,
         extra_fee: u64,
+        fee_config: FeeConfig,
+        is_offer: bool,
     ) -> Result<(TxOut, u64, u64), Error> {
+        let fee_multiplier = match (fee_config, is_offer) {
+            (FeeConfig::AllOffer, true) | (FeeConfig::AllAccept, false) => 1.0,
+            (FeeConfig::EvenSplit, _) => 0.5,
+            (FeeConfig::AllOffer, false) | (FeeConfig::AllAccept, true) => 0.0,
+        };
+
         let mut inputs_weight: usize = 0;
 
         for w in &self.inputs {
@@ -291,53 +299,82 @@ impl PartyParams {
 
         // Base weight (nLocktime, nVersion, ...) is distributed among parties
         // independently of inputs contributed
-        let this_party_fund_base_weight = FUND_TX_BASE_WEIGHT / 2;
+        let this_party_fund_base_weight = (FUND_TX_BASE_WEIGHT as f32 * fee_multiplier) as usize;
 
         let fund_weight_without_change = checked_add!(
             this_party_fund_base_weight,
             inputs_weight
         )?;
-        let fund_fee_without_change = util::tx_weight_to_fee(fund_weight_without_change, fee_rate_per_vb)?;
+        let fund_fee_without_change = if inputs_weight > 0 {
+            util::tx_weight_to_fee(fund_weight_without_change, fee_rate_per_vb)?
+        } else {
+            0
+        };
 
         // Base weight (nLocktime, nVersion, funding input ...) is distributed
         // among parties independently of output types
-        let this_party_cet_base_weight = CET_BASE_WEIGHT / 2;
+        let this_party_cet_base_weight = (CET_BASE_WEIGHT as f32 * fee_multiplier) as usize;
 
         let output_spk_fee = dlc_payout_spk_fee(
             &self.payout_script_pubkey,
             fee_rate_per_vb,
         );
+
+        let output_spk_fee = match (fee_config, is_offer) {
+            (FeeConfig::AllOffer, true) | (FeeConfig::AllAccept, false) => output_spk_fee * 2,
+            (FeeConfig::EvenSplit, _) => output_spk_fee,
+            (FeeConfig::AllOffer, false) | (FeeConfig::AllAccept, true) => 0,
+        };
         let cet_or_refund_base_fee = util::weight_to_fee(this_party_cet_base_weight, fee_rate_per_vb)?;
         let cet_or_refund_fee = checked_add!(cet_or_refund_base_fee, output_spk_fee)?;
+
         let required_input_funds =
             checked_add!(self.collateral, fund_fee_without_change, cet_or_refund_fee, extra_fee)?;
+
         if self.input_amount < required_input_funds {
-            return Err(Error::InvalidArgument(format!("input amount: {} smaller than required input funds: {} (collateral: {}, fund_fee: {}, cet_or_refund_fee: {}, extra_fee: {})", self.input_amount, required_input_funds, self.collateral, fund_fee_without_change, cet_or_refund_fee, extra_fee)));
+            return Err(
+                Error::InvalidArgument(
+                    format!(
+                        "input amount: {} smaller than required input funds: {} \
+                         (collateral: {}, fund_fee: {}, cet_or_refund_fee: {}, extra_fee: {})",
+                        self.input_amount,
+                        required_input_funds,
+                        self.collateral,
+                        fund_fee_without_change,
+                        cet_or_refund_fee,
+                        extra_fee
+                    )
+                )
+            );
         }
 
         let (change_amount, change_fee) = {
             let leftover = self.input_amount - required_input_funds;
 
-            // Value size + script length var_int + ouput script pubkey size
-            let change_script_size = self.change_script_pubkey.len();
-            // Change size is scaled by 4 from vBytes to weight units
-            let change_script_weight =
-                change_script_size
+            if leftover == 0 {
+                (0, 0)
+            } else {
+                // Value size + script length var_int + ouput script pubkey size
+                let change_script_size = self.change_script_pubkey.len();
+                // Change size is scaled by 4 from vBytes to weight units
+                let change_script_weight =
+                    change_script_size
                     .checked_mul(4)
                     .ok_or(Error::InvalidArgument(
                         "failed to multiply 4 to change size".to_string(),
                     ))?;
-            let change_weight = 36 + change_script_weight;
+                let change_weight = 36 + change_script_weight;
 
-            let change_fee = util::weight_to_fee(change_weight, fee_rate_per_vb)?;
+                let change_fee = util::weight_to_fee(change_weight, fee_rate_per_vb)?;
 
-            let change_amount = leftover
-                .checked_sub(change_fee)
-                .ok_or_else(|| {
-                    Error::InvalidArgument("Change output value is lower than cost".to_string())
-                })?;
+                let change_amount = leftover
+                    .checked_sub(change_fee)
+                    .ok_or_else(|| {
+                        Error::InvalidArgument("Change output value is lower than cost".to_string())
+                    })?;
 
-            (change_amount, change_fee)
+                (change_amount, change_fee)
+            }
         };
 
         let fund_fee = fund_fee_without_change + change_fee;
@@ -379,6 +416,7 @@ pub fn create_dlc_transactions(
     fund_lock_time: u32,
     cet_lock_time: u32,
     fund_output_serial_id: u64,
+    fee_config: FeeConfig,
 ) -> Result<DlcTransactions, Error> {
     let (fund_tx, funding_script_pubkey) = create_fund_transaction_with_fees(
         offer_params,
@@ -387,6 +425,7 @@ pub fn create_dlc_transactions(
         fund_lock_time,
         fund_output_serial_id,
         0,
+        fee_config,
     )?;
     let fund_outpoint = OutPoint {
         txid: fund_tx.txid(),
@@ -419,22 +458,32 @@ pub(crate) fn create_fund_transaction_with_fees(
     fund_lock_time: u32,
     fund_output_serial_id: u64,
     extra_fee: u64,
+    fee_config: FeeConfig,
 ) -> Result<(Transaction, Script), Error> {
     let total_collateral = checked_add!(offer_params.collateral, accept_params.collateral)?;
 
-    let (offer_extra_fee, accept_extra_fee) = {
-        let half = extra_fee / 2;
-        let remainder = extra_fee % 2;
+    let (offer_extra_fee, accept_extra_fee) =
+        match fee_config {
+            FeeConfig::EvenSplit => {
+                let half = extra_fee / 2;
+                let remainder = extra_fee % 2;
 
-        // The offer party has to pay an extra sat if there is a remainder.
-        (half + remainder, half)
-    };
+                // The offer party has to pay an extra sat if there is a remainder.
+                (half + remainder, half)
+            },
+            FeeConfig::AllOffer => {
+                (extra_fee, 0)
+            },
+            FeeConfig::AllAccept => {
+                (0, extra_fee)
+            },
+        };
 
     let (offer_change_output, offer_fund_fee, offer_cet_fee) =
-        offer_params.get_change_output_and_fees(fee_rate_per_vb, offer_extra_fee)?;
+        offer_params.get_change_output_and_fees(fee_rate_per_vb, offer_extra_fee, fee_config, true)?;
 
     let (accept_change_output, accept_fund_fee, accept_cet_fee) =
-        accept_params.get_change_output_and_fees(fee_rate_per_vb, accept_extra_fee)?;
+        accept_params.get_change_output_and_fees(fee_rate_per_vb, accept_extra_fee, fee_config, false)?;
 
     let fund_output_value = checked_add!(offer_params.input_amount, accept_params.input_amount)?
         - offer_change_output.value
@@ -931,6 +980,17 @@ pub fn verify_tx_input_sig<V: Verification>(
     Ok(())
 }
 
+/// Configure who pays for the transaction fees involved in a DLC channel.
+#[derive(Clone, Copy, Debug)]
+pub enum FeeConfig {
+    /// The transaction fees are split evenly between the offer party and the accept party.
+    EvenSplit,
+    /// The transaction fees are paid by the offer party.
+    AllOffer,
+    /// The transaction fees are paid by the accept party.
+    AllAccept,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1270,7 +1330,7 @@ mod tests {
         // Act
 
         let (change_out, fund_fee, cet_fee) =
-            party_params.get_change_output_and_fees(4, 0).unwrap();
+            party_params.get_change_output_and_fees(4, 0, FeeConfig::EvenSplit, true).unwrap();
 
         // Assert
         assert!(change_out.value > 0 && fund_fee > 0 && cet_fee > 0);
@@ -1282,7 +1342,7 @@ mod tests {
         let (party_params, _) = get_party_params(100000, 100000, None);
 
         // Act
-        let res = party_params.get_change_output_and_fees(4, 0);
+        let res = party_params.get_change_output_and_fees(4, 0, FeeConfig::EvenSplit, true);
 
         // Assert
         assert!(res.is_err());
@@ -1304,6 +1364,7 @@ mod tests {
             10,
             10,
             0,
+            FeeConfig::EvenSplit,
         )
         .unwrap();
 
@@ -1330,6 +1391,7 @@ mod tests {
             10,
             10,
             0,
+            FeeConfig::EvenSplit,
         )
         .unwrap();
 
@@ -1500,6 +1562,7 @@ mod tests {
                 10,
                 10,
                 case.serials[0],
+                FeeConfig::EvenSplit,
             )
             .unwrap();
 
