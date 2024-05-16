@@ -23,6 +23,7 @@ use bitcoin::consensus::encode::serialize_hex;
 use bitcoin::{Address, OutPoint, Txid};
 use bitcoin::Transaction;
 use bitcoin::hashes::hex::ToHex;
+use dlc::FeeConfig;
 use dlc_messages::channel::{
     AcceptChannel, CollaborativeCloseOffer, OfferChannel, Reject, RenewAccept, RenewConfirm,
     RenewFinalize, RenewOffer, RenewRevoke, SettleAccept, SettleConfirm, SettleFinalize,
@@ -46,8 +47,8 @@ use std::sync::Mutex;
 use bitcoin::consensus::Decodable;
 use bitcoin::hashes::Hash;
 
-/// The number of confirmations required before moving the the confirmed state.
-pub const NB_CONFIRMATIONS: u32 = 1;
+/// The number of confirmations required before moving a [`Contract`] to the confirmed state.
+pub const NB_CONFIRMATIONS: u32 = 0;
 /// The delay to set the refund value to.
 pub const REFUND_DELAY: u32 = 86400 * 7;
 /// The nSequence value used for CETs in DLC channels
@@ -576,6 +577,7 @@ where
         let confirmations = self.blockchain.get_transaction_confirmations(
             &contract.accepted_contract.dlc_transactions.fund.txid(),
         )?;
+        #[allow(clippy::absurd_extreme_comparisons)]
         if confirmations >= NB_CONFIRMATIONS {
             self.store
                 .update_contract(&Contract::Confirmed(contract.clone()))?;
@@ -706,6 +708,7 @@ where
         let confirmations = self
             .blockchain
             .get_transaction_confirmations(&broadcasted_txid)?;
+        #[allow(clippy::absurd_extreme_comparisons)]
         if confirmations >= NB_CONFIRMATIONS {
             let closed_contract = ClosedContract {
                 attestations: contract.attestations.clone(),
@@ -743,6 +746,7 @@ where
             .blockchain
             .get_transaction_confirmations(&signed_cet.txid())?;
 
+        #[allow(clippy::absurd_extreme_comparisons)]
         if confirmations < 1 {
             // TODO(tibo): if this fails because another tx is already in
             // mempool or blockchain, we might have been cheated. There is
@@ -823,6 +827,7 @@ where
         &self,
         contract_input: &ContractInput,
         counter_party: PublicKey,
+        fee_config: dlc::FeeConfig,
         reference_id: Option<ReferenceId>,
     ) -> Result<OfferChannel, Error> {
         let oracle_announcements = contract_input
@@ -842,6 +847,7 @@ where
             &self.blockchain,
             &self.time,
             crate::utils::get_new_temporary_id(),
+            fee_config,
             false,
             reference_id
         )?;
@@ -883,6 +889,7 @@ where
     pub fn accept_channel(
         &self,
         channel_id: &DlcChannelId,
+        fee_config: dlc::FeeConfig,
     ) -> Result<(AcceptChannel, DlcChannelId, ContractId, PublicKey), Error> {
         let offered_channel =
             get_channel_in_state!(self, channel_id, Offered, None as Option<PublicKey>)?;
@@ -907,6 +914,7 @@ where
                 &offered_contract,
                 &self.wallet,
                 &self.blockchain,
+                fee_config,
             )?;
 
         self.wallet.import_address(&Address::p2wsh(
@@ -1356,6 +1364,7 @@ where
 
         // TODO(lucas): No need to send it again if it is in mempool, unless we want to bump the
         // fee.
+        #[allow(clippy::absurd_extreme_comparisons)]
         if confirmations < 1 {
             self.blockchain.send_transaction(claim_tx)?;
         } else if confirmations >= NB_CONFIRMATIONS {
@@ -1458,6 +1467,10 @@ where
                 CET_NSEQUENCE,
                 &self.wallet,
                 &self.chain_monitor,
+                offered_channel
+                    .fee_config
+                    .map(FeeConfig::from)
+                    .unwrap_or(FeeConfig::EvenSplit),
             );
 
             match res {

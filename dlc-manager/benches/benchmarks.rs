@@ -203,7 +203,7 @@ fn create_transactions(payouts: &[Payout]) -> DlcTransactions {
         input_amount: 300000000,
         collateral: 100000000,
     };
-    create_dlc_transactions(&offer_params, &accept_params, payouts, 1000, 2, 0, 1000, 3).unwrap()
+    create_dlc_transactions(&offer_params, &accept_params, payouts, 1000, 2, 0, 1000, 3, dlc::FeeConfig::EvenSplit).unwrap()
 }
 
 fn accept_seckey() -> SecretKey {

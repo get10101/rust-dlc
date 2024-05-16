@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use crate::{signatures_to_secret, util::get_sig_hash_msg, DlcTransactions, PartyParams, Payout};
+use crate::{signatures_to_secret, util::get_sig_hash_msg, DlcTransactions, FeeConfig, PartyParams, Payout};
 
 use super::Error;
 use bitcoin::{
@@ -245,6 +245,7 @@ pub fn create_channel_transactions(
     cet_lock_time: u32,
     fund_output_serial_id: u64,
     cet_nsequence: Sequence,
+    fee_config: FeeConfig,
 ) -> Result<DlcChannelTransactions, Error> {
     let extra_fee = super::util::dlc_channel_extra_fee(fee_rate_per_vb)?;
     let (fund, funding_script_pubkey) = super::create_fund_transaction_with_fees(
@@ -254,6 +255,7 @@ pub fn create_channel_transactions(
         fund_lock_time,
         fund_output_serial_id,
         extra_fee,
+        fee_config
     )?;
 
     create_renewal_channel_transactions(

@@ -12,7 +12,7 @@ use lightning::ln::msgs::DecodeError;
 use lightning::util::ser::{Readable, Writeable, Writer};
 
 impl_dlc_writeable!(PartyBasePoints, { (own_basepoint, writeable), (publish_basepoint, writeable), (revocation_basepoint, writeable) });
-impl_dlc_writeable!(OfferedChannel, { (offered_contract_id, writeable), (temporary_channel_id, writeable), (party_points, writeable), (per_update_point, writeable), (offer_per_update_seed, writeable), (is_offer_party, writeable), (counter_party, writeable), (cet_nsequence, writeable), (reference_id, option) });
+impl_dlc_writeable!(OfferedChannel, { (offered_contract_id, writeable), (temporary_channel_id, writeable), (party_points, writeable), (per_update_point, writeable), (offer_per_update_seed, writeable), (is_offer_party, writeable), (counter_party, writeable), (cet_nsequence, writeable), (reference_id, option), (fee_config, option) });
 impl_dlc_writeable!(AcceptedChannel, {
     (accepted_contract_id, writeable),
     (offer_base_points, writeable),

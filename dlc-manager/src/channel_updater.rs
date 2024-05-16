@@ -15,10 +15,10 @@ use crate::{chain_monitor::{ChainMonitor, ChannelInfo, TxType}, channel::{
 }, contract_updater::{
     accept_contract_internal, verify_accepted_and_sign_contract_internal,
     verify_signed_contract_internal,
-}, error::Error, subchannel::{ClosingSubChannel, SubChannel}, Blockchain, ContractId, DlcChannelId, Signer, Time, Wallet, ReferenceId, manager::CET_NSEQUENCE};
+}, error::Error, manager::CET_NSEQUENCE, subchannel::{ClosingSubChannel, SubChannel}, Blockchain, ContractId, DlcChannelId, ReferenceId, Signer, Time, Wallet};
 use bitcoin::{OutPoint, Script, Sequence, Transaction, Address};
 use dlc::{
-    channel::{get_tx_adaptor_signature, verify_tx_adaptor_signature, DlcChannelTransactions}, util::dlc_channel_extra_fee, PartyParams
+    channel::{get_tx_adaptor_signature, verify_tx_adaptor_signature, DlcChannelTransactions}, util::dlc_channel_extra_fee, PartyParams, FeeConfig
 };
 use dlc_messages::{
     channel::{
@@ -100,6 +100,7 @@ pub fn offer_channel<C: Signing, W: Deref, B: Deref, T: Deref>(
     blockchain: &B,
     time: &T,
     temporary_channel_id: DlcChannelId,
+    fee_config: FeeConfig,
     is_sub_channel: bool,
     reference_id: Option<ReferenceId>
 ) -> Result<(OfferedChannel, OfferedContract), Error>
@@ -118,6 +119,8 @@ where
         blockchain,
         !is_sub_channel,
         extra_fee,
+        true,
+        fee_config,
     )?;
     let party_points = crate::utils::get_party_base_points(secp, wallet)?;
 
@@ -155,7 +158,8 @@ where
         is_offer_party: true,
         counter_party: *counter_party,
         cet_nsequence,
-        reference_id
+        reference_id,
+        fee_config: Some(fee_config.into()),
     };
 
     Ok((offered_channel, offered_contract))
@@ -170,6 +174,7 @@ pub fn accept_channel_offer<W: Deref, B: Deref>(
     offered_contract: &OfferedContract,
     wallet: &W,
     blockchain: &B,
+    fee_config: FeeConfig,
 ) -> Result<(AcceptedChannel, AcceptedContract, AcceptChannel), Error>
 where
     W::Target: Wallet,
@@ -183,6 +188,7 @@ where
         blockchain,
         None,
         None,
+        fee_config,
     )
 }
 
@@ -199,6 +205,7 @@ pub(crate) fn accept_channel_offer_internal<W: Deref, B: Deref>(
         PartyBasePoints,
         PublicKey,
     )>,
+    fee_config: FeeConfig,
 ) -> Result<(AcceptedChannel, AcceptedContract, AcceptChannel), Error>
 where
     W::Target: Wallet,
@@ -221,7 +228,9 @@ where
                 wallet,
                 blockchain,
                 sub_channel_info.is_none(),
-                extra_fee
+                extra_fee,
+                false,
+                fee_config
             )?;
             let accept_points = crate::utils::get_party_base_points(secp, wallet)?;
             let per_update_seed = wallet.get_new_secret_key()?;
@@ -301,6 +310,7 @@ where
             offered_contract.cet_locktime,
             offered_contract.fund_output_serial_id,
             Sequence(offered_channel.cet_nsequence),
+            fee_config,
         )?;
         let accept_fund_sk = wallet.get_secret_key_for_pubkey(&accept_params.fund_pubkey)?;
         let funding_output_value = txs.dlc_transactions.get_fund_output().value;
@@ -385,6 +395,7 @@ pub fn verify_and_sign_accepted_channel<S: Deref>(
     cet_nsequence: u32,
     signer: &S,
     chain_monitor: &Mutex<ChainMonitor>,
+    fee_config: FeeConfig,
 ) -> Result<(SignedChannel, SignedContract, SignChannel), Error>
 where
     S::Target: Signer,
@@ -398,6 +409,7 @@ where
         signer,
         None,
         chain_monitor,
+        fee_config,
     )
 }
 
@@ -410,6 +422,7 @@ pub(crate) fn verify_and_sign_accepted_channel_internal<S: Deref>(
     signer: &S,
     sub_channel_info: Option<SubChannelSignVerifyInfo>,
     chain_monitor: &Mutex<ChainMonitor>,
+    fee_config: FeeConfig,
 ) -> Result<(SignedChannel, SignedContract, SignChannel), Error>
 where
     S::Target: Signer,
@@ -513,6 +526,7 @@ where
             offered_contract.cet_locktime,
             offered_contract.fund_output_serial_id,
             Sequence(cet_nsequence),
+            fee_config,
         )?;
         let offer_fund_sk =
             signer.get_secret_key_for_pubkey(&offered_contract.offer_params.fund_pubkey)?;

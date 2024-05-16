@@ -4,6 +4,7 @@ mod test_utils;
 use bitcoin::Amount;
 use bitcoin_test_utils::rpc_helpers::init_clients;
 use bitcoincore_rpc::RpcApi;
+use dlc::FeeConfig;
 use dlc_manager::contract::contract_input::ContractInput;
 use dlc_manager::manager::Manager;
 use dlc_manager::{channel::Channel, contract::Contract, Blockchain, Oracle, Storage, Wallet};
@@ -484,7 +485,8 @@ fn channel_execution_test(test_params: TestParams, path: TestPath) {
             "0218845781f631c48f1c9709e23092067d06837f30aa0cd0544ac887fe91ddd166"
                 .parse()
                 .unwrap(),
-            None
+            FeeConfig::EvenSplit,
+            None,
         )
         .expect("Send offer error");
 
@@ -514,7 +516,7 @@ fn channel_execution_test(test_params: TestParams, path: TestPath) {
     let (mut accept_msg, channel_id, contract_id, _) = alice_manager_send
         .lock()
         .unwrap()
-        .accept_channel(&temporary_channel_id)
+        .accept_channel(&temporary_channel_id, FeeConfig::EvenSplit)
         .expect("Error accepting contract offer");
     assert_channel_state!(alice_manager_send, channel_id, Accepted);
 

@@ -1,7 +1,7 @@
 use std::ops::Deref;
 
 use bitcoin::{consensus::Encodable, Txid};
-use dlc::{util::{cet_or_refund_base_fee, dlc_payout_spk_fee}, PartyParams, TxInputInfo, FUND_TX_BASE_WEIGHT};
+use dlc::{FeeConfig, util::{cet_or_refund_base_fee, dlc_payout_spk_fee}, PartyParams, TxInputInfo, FUND_TX_BASE_WEIGHT};
 use dlc_messages::{
     oracle_msgs::{OracleAnnouncement, OracleAttestation},
     FundingInput,
@@ -12,10 +12,7 @@ use secp256k1_zkp::rand::{thread_rng, Rng, RngCore};
 use secp256k1_zkp::{PublicKey, Secp256k1, SecretKey, Signing};
 
 use crate::{
-    channel::party_points::PartyBasePoints,
-    contract::{contract_info::ContractInfo, AdaptorInfo, FundingInputInfo},
-    error::Error,
-    Blockchain, Wallet,
+    channel::party_points::PartyBasePoints, contract::{contract_info::ContractInfo, AdaptorInfo, FundingInputInfo}, error::Error, Blockchain, Wallet
 };
 
 macro_rules! get_object_in_state {
@@ -96,6 +93,8 @@ pub(crate) fn get_party_params<C: Signing, W: Deref, B: Deref>(
     blockchain: &B,
     needs_utxo: bool,
     extra_fee: u64,
+    is_offer: bool,
+    fee_config: FeeConfig,
 ) -> Result<(PartyParams, SecretKey, Vec<FundingInputInfo>), Error>
 where
     W::Target: Wallet,
@@ -116,16 +115,31 @@ where
     let mut total_input = 0;
 
     if needs_utxo {
-        let payout_spk_fee = dlc_payout_spk_fee(&payout_spk, fee_rate);
+        let tx_fees = match (fee_config, is_offer) {
+            (FeeConfig::EvenSplit, _) => {
+                let half_of_cet_or_refund_fee = get_half_cet_or_refund_fee(fee_rate)?;
 
-        // The extra fee is split evenly between both parties. For simplicity, we allow overshooting
-        // by 1 sat during coin selection
-        let extra_fee_half = extra_fee.div_ceil(2);
+                let payout_spk_fee = dlc_payout_spk_fee(&payout_spk, fee_rate);
+
+                // The extra fee is split evenly between both parties. For simplicity, we allow overshooting
+                // by 1 sat during coin selection
+                let extra_fee_half = extra_fee.div_ceil(2);
+
+                half_of_cet_or_refund_fee + payout_spk_fee + extra_fee_half
+            },
+            (FeeConfig::AllOffer, true) | (FeeConfig::AllAccept, false) => {
+                let cet_or_refund_fee = cet_or_refund_base_fee(fee_rate)?;
+
+                // We assume that both parties use the same kind of SPK.
+                let payout_spk_fees = dlc_payout_spk_fee(&payout_spk, fee_rate) * 2;
+
+                cet_or_refund_fee + payout_spk_fees + extra_fee
+            },
+            (FeeConfig::AllOffer, false) | (FeeConfig::AllAccept, true) => 0,
+        };
 
         let appr_required_amount = own_collateral
-            + get_half_cet_or_refund_fee(fee_rate)?
-            + payout_spk_fee
-            + extra_fee_half;
+            + tx_fees;
 
         let utxos = wallet.get_utxos_for_amount(
             appr_required_amount,
