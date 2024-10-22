@@ -1312,9 +1312,11 @@ where
             >= CET_NSEQUENCE
         {
             log::info!(
-                "Settle transaction {} for channel {} has enough confirmations to spend from it",
+                "Settle transaction {} for channel {} has enough confirmations to spend from it. is_offer={}, is_initiator={}",
                 settle_tx.txid(),
-                serialize_hex(&signed_channel.channel_id)
+                serialize_hex(&signed_channel.channel_id),
+                is_offer,
+                is_initiator
             );
 
             let fee_rate_per_vb: u64 = {
