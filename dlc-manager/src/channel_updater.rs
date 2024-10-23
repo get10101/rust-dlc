@@ -2855,7 +2855,6 @@ pub fn finalize_unilateral_close_settled_channel<S: Deref>(
     destination_address: &Address,
     fee_rate_per_vb: u64,
     signer: &S,
-    is_offer: bool,
     is_initiator: bool,
 ) -> Result<(Transaction, Channel), Error>
 where
@@ -2892,7 +2891,6 @@ where
         CET_NSEQUENCE,
         0,
         fee_rate_per_vb,
-        is_offer,
     )?;
 
     let closing_channel = SettledClosingChannel {

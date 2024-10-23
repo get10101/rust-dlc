@@ -415,27 +415,31 @@ pub fn create_and_sign_claim_settle_transaction<C: Signing>(
     csv_timelock: u32,
     lock_time: u32,
     fee_rate_per_vb: u64,
-    is_offer: bool,
 ) -> Result<Transaction, Error> {
     let own_descriptor = settle_descriptor(own_params, &counter_params.own_pk, csv_timelock);
 
-    let vout = if is_offer {
-        0
-    } else {
-        1
+    let output = settle_tx.output.iter().enumerate().find(|(_, output)| {
+        output.script_pubkey == own_descriptor.script_pubkey()
+    });
+
+    let (vout, output) = match output {
+        Some((vout, output)) => (vout, output),
+        None => {
+            return Err(Error::InvalidArgument("No claimable output found on settle transaction".to_string()));
+        },
     };
 
     let tx_in = TxIn {
         previous_output: OutPoint {
             txid: settle_tx.txid(),
-            vout,
+            vout: vout as u32,
         },
         sequence: Sequence::from_height(csv_timelock as u16),
         script_sig: Script::default(),
         witness: Witness::default(),
     };
 
-    let input_value = settle_tx.output[vout as usize].value;
+    let input_value = output.value;
 
     let dest_script_pk_len = dest_address.script_pubkey().len();
     let var_int_prefix_len = crate::util::compute_var_int_prefix_size(dest_script_pk_len);
