@@ -1298,11 +1298,10 @@ where
         &self,
         signed_channel: SignedChannel,
     ) -> Result<(), Error> {
-        let (settle_tx, &is_offer, &is_initiator) = get_signed_channel_state!(
+        let (settle_tx, &is_initiator) = get_signed_channel_state!(
             signed_channel,
             SettledClosing,
             settle_transaction,
-            is_offer,
             is_initiator
         )?;
 
@@ -1312,11 +1311,9 @@ where
             >= CET_NSEQUENCE
         {
             log::info!(
-                "Settle transaction {} for channel {} has enough confirmations to spend from it. is_offer={}, is_initiator={}",
+                "Settle transaction {} for channel {} has enough confirmations to spend from it",
                 settle_tx.txid(),
                 serialize_hex(&signed_channel.channel_id),
-                is_offer,
-                is_initiator
             );
 
             let fee_rate_per_vb: u64 = {
@@ -1338,7 +1335,6 @@ where
                     &self.wallet.get_new_address()?,
                     fee_rate_per_vb,
                     &self.wallet,
-                    is_offer,
                     is_initiator,
                 )?;
 
