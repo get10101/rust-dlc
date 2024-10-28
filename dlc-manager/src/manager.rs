@@ -1320,7 +1320,7 @@ where
                 let fee_rate = self
                     .fee_estimator
                     .get_est_sat_per_1000_weight(
-                        ConfirmationTarget::HighPriority,
+                        ConfirmationTarget::Background,
                     );
 
                 let fee_rate = fee_rate / 250;
